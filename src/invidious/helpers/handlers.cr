@@ -22,6 +22,7 @@ end
 class Kemal::RouteHandler
   {% for method in %w(GET POST PUT HEAD DELETE PATCH OPTIONS) %}
     exclude ["/api/v1/*"], {{method}}
+    exclude ["/api/lightious/v1/*"], {{method}}
   {% end %}
 
   # Processes the route if it's a match. Otherwise renders 404.
@@ -46,6 +47,7 @@ end
 class Kemal::ExceptionHandler
   {% for method in %w(GET POST PUT HEAD DELETE PATCH OPTIONS) %}
     exclude ["/api/v1/*"], {{method}}
+    exclude ["/api/lightious/v1/*"], {{method}}
   {% end %}
 
   private def call_exception_with_status_code(context : HTTP::Server::Context, exception : Exception, status_code : Int32)
@@ -122,7 +124,7 @@ end
 
 class APIHandler < Kemal::Handler
   {% for method in %w(GET POST PUT HEAD DELETE PATCH OPTIONS) %}
-  only ["/api/v1/*"], {{method}}
+    only ["/api/v1/*", "/api/lightious/v1/*"], {{method}}
   {% end %}
   exclude ["/api/v1/auth/notifications"], "GET"
   exclude ["/api/v1/auth/notifications"], "POST"

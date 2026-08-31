@@ -32,6 +32,7 @@ module Invidious::Routing
 
       self.register_user_routes
       self.register_feed_routes
+      self.register_lightious_browser_routes
 
       # Support push notifications via PubSubHubbub
       get "/feed/webhook/:token", Routes::Feeds, :push_notifications_get
@@ -44,6 +45,7 @@ module Invidious::Routing
 
     self.register_image_routes
     self.register_api_v1_routes
+    self.register_lightious_api_routes
     self.register_api_manifest_routes
     self.register_video_playback_routes
     self.register_companion_routes
@@ -79,6 +81,20 @@ module Invidious::Routing
     post "/token_ajax", Routes::Account, :token_ajax
     post "/subscription_ajax", Routes::Subscriptions, :toggle_subscription
     get "/subscription_manager", Routes::Subscriptions, :subscription_manager
+  end
+
+  def register_lightious_browser_routes
+    return unless CONFIG.lightious.enabled
+
+    get "/lightious", Routes::LightiousControl, :dashboard
+    get "/lightious/pair", Routes::LightiousControl, :pair_page
+    post "/lightious/pair/preview", Routes::LightiousControl, :preview_pairing
+    post "/lightious/pair", Routes::LightiousControl, :claim_pairing
+    post "/lightious/mode", Routes::LightiousControl, :update_mode
+    post "/lightious/videos", Routes::LightiousControl, :add_video
+    post "/lightious/videos/:id/policy", Routes::LightiousControl, :update_video_policy
+    post "/lightious/videos/:id/delete", Routes::LightiousControl, :delete_video
+    post "/lightious/devices/:id/revoke", Routes::LightiousControl, :revoke_device
   end
 
   def register_iv_playlist_routes
@@ -327,5 +343,14 @@ module Invidious::Routing
       get "/api/v1/mixes/:rdid", {{namespace}}::Misc, :mixes
       get "/api/v1/resolveurl", {{namespace}}::Misc, :resolve_url
     {% end %}
+  end
+
+  def register_lightious_api_routes
+    return unless CONFIG.lightious.enabled
+
+    post "/api/lightious/v1/pairings", Routes::API::Lightious::V1, :create_pairing
+    get "/api/lightious/v1/pairings/:id", Routes::API::Lightious::V1, :pairing_status
+    post "/api/lightious/v1/pairings/:id/activate", Routes::API::Lightious::V1, :activate_pairing
+    get "/api/lightious/v1/sync", Routes::API::Lightious::V1, :sync
   end
 end

@@ -98,6 +98,25 @@ db:
 
 #########################################
 #
+#  Lightious companion control plane
+#
+#########################################
+
+##
+## Enable the optional Lightious pairing and device configuration service.
+## The public URL is used to generate the verification address shown during
+## pairing. Use HTTPS in production; localhost HTTP is accepted for development.
+## Pairing requests may live for 1 to 60 minutes.
+##
+## Default: disabled, 10-minute pairing lifetime, no public URL
+##
+#lightious:
+#  enabled: false
+#  pairing_ttl_minutes: 10
+#  public_url: "https://lightious.example.com"
+
+#########################################
+#
 #  Server config
 #
 #########################################

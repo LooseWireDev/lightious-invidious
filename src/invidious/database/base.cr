@@ -20,6 +20,13 @@ module Invidious::Database
     Invidious::Database.check_table("users", User)
     Invidious::Database.check_table("videos", Video)
 
+    if cfg.lightious.enabled
+      Invidious::Database.check_table("lightious_profiles")
+      Invidious::Database.check_table("lightious_items")
+      Invidious::Database.check_table("lightious_pairings")
+      Invidious::Database.check_table("lightious_devices")
+    end
+
     if cfg.cache_annotations
       Invidious::Database.check_table("annotations", Annotation)
     end

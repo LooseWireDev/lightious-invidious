@@ -1,0 +1,98 @@
+<% content_for "header" do %>
+<title>Lightious companion</title>
+<% end %>
+
+<div class="pure-g">
+    <div class="pure-u-1 pure-u-lg-1-5"></div>
+    <div class="pure-u-1 pure-u-lg-3-5">
+        <div class="h-box">
+            <h1>Lightious</h1>
+            <p>This page controls what paired Light Phones can open. Videos do not play in this companion.</p>
+
+            <% if notice %>
+                <p class="pure-button pure-button-primary"><%= HTML.escape(notice.not_nil!) %></p>
+            <% end %>
+
+            <h2>Experience</h2>
+            <form class="pure-form" action="/lightious/mode" method="post">
+                <label class="pure-radio">
+                    <input type="radio" name="mode" value="focused" <% if profile.mode == "focused" %>checked<% end %>>
+                    <strong>Focused</strong> — only the videos listed below appear on the phone
+                </label>
+                <label class="pure-radio">
+                    <input type="radio" name="mode" value="explore" <% if profile.mode == "explore" %>checked<% end %>>
+                    <strong>Explore</strong> — allow the phone's search, feed, and local history pages
+                </label>
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <button class="pure-button pure-button-primary" type="submit">Save mode</button>
+            </form>
+            <p><small>Phone configuration revision <%= profile.revision %></small></p>
+
+            <h2>Send a video</h2>
+            <form class="pure-form pure-form-stacked" action="/lightious/videos" method="post">
+                <label for="lightious-video">YouTube or Invidious video link</label>
+                <input class="pure-input-1" id="lightious-video" name="video" type="text" required placeholder="https://www.youtube.com/watch?v=...">
+                <label for="lightious-policy">Allowed playback</label>
+                <select class="pure-input-1" id="lightious-policy" name="playback_policy">
+                    <option value="listen_only" selected>Listen only</option>
+                    <option value="watch_and_listen">Watch and listen</option>
+                </select>
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <button class="pure-button pure-button-primary" type="submit">Send to phone</button>
+            </form>
+
+            <h2>Focused library</h2>
+            <% if items.empty? %>
+                <p>No videos have been sent yet.</p>
+            <% else %>
+                <% items.each do |item| %>
+                    <section class="h-box" style="border: 1px solid; margin-bottom: 1rem;">
+                        <h3><%= HTML.escape(item.title) %></h3>
+                        <p><%= HTML.escape(item.author) %> · <%= item.length_seconds // 60 %>:<%= "%02d" % (item.length_seconds % 60) %></p>
+                        <p><code><%= HTML.escape(item.video_id) %></code></p>
+                        <form class="pure-form" action="/lightious/videos/<%= item.id %>/policy" method="post">
+                            <select name="playback_policy" aria-label="Allowed playback for <%= HTML.escape(item.title) %>">
+                                <option value="listen_only" <% if item.playback_policy == "listen_only" %>selected<% end %>>Listen only</option>
+                                <option value="watch_and_listen" <% if item.playback_policy == "watch_and_listen" %>selected<% end %>>Watch and listen</option>
+                            </select>
+                            <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                            <button class="pure-button" type="submit">Update</button>
+                        </form>
+                        <form class="pure-form" action="/lightious/videos/<%= item.id %>/delete" method="post" style="margin-top: .5rem;">
+                            <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                            <button class="pure-button" type="submit">Remove</button>
+                        </form>
+                    </section>
+                <% end %>
+            <% end %>
+
+            <h2>Paired phones</h2>
+            <p><a class="pure-button pure-button-primary" href="/lightious/pair">Pair a phone</a></p>
+            <% if devices.empty? %>
+                <p>No phones are paired.</p>
+            <% else %>
+                <% devices.each do |device| %>
+                    <section class="h-box" style="border: 1px solid; margin-bottom: 1rem;">
+                        <h3><%= HTML.escape(device.label) %></h3>
+                        <p>
+                            <% if device.revoked_at %>
+                                Revoked
+                            <% elsif device.last_seen_at %>
+                                Last synced <%= device.last_seen_at.not_nil!.to_s("%Y-%m-%d %H:%M UTC") %>
+                            <% else %>
+                                Paired; not synced yet
+                            <% end %>
+                        </p>
+                        <% unless device.revoked_at %>
+                            <form class="pure-form" action="/lightious/devices/<%= device.id %>/revoke" method="post">
+                                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                                <button class="pure-button" type="submit">Revoke phone</button>
+                            </form>
+                        <% end %>
+                    </section>
+                <% end %>
+            <% end %>
+        </div>
+    </div>
+    <div class="pure-u-1 pure-u-lg-1-5"></div>
+</div>

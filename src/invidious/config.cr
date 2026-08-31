@@ -83,6 +83,16 @@ end
 class Config
   include YAML::Serializable
 
+  class LightiousConfig
+    include YAML::Serializable
+
+    property enabled : Bool = false
+    property pairing_ttl_minutes : Int32 = 10
+
+    @[YAML::Field(converter: Preferences::URIConverter)]
+    property public_url : URI = URI.parse("")
+  end
+
   class CompanionConfig
     include YAML::Serializable
 
@@ -182,6 +192,9 @@ class Config
   # Invidious companion API key
   property invidious_companion_key : String = ""
 
+  # Lightious companion control plane
+  property lightious : LightiousConfig = LightiousConfig.from_yaml("")
+
   # Saved cookies in "name1=value1; name2=value2..." format
   @[YAML::Field(converter: Preferences::StringToCookies)]
   property cookies : HTTP::Cookies = HTTP::Cookies.new
@@ -277,6 +290,25 @@ class Config
           exit(1)
         end
     {% end %}
+
+    if config.lightious.enabled
+      unless (1..60).includes?(config.lightious.pairing_ttl_minutes)
+        puts "Config: The value of 'lightious.pairing_ttl_minutes' must be between 1 and 60."
+        exit(1)
+      end
+
+      public_url = config.lightious.public_url
+      unless public_url.to_s.empty?
+        host = public_url.host.to_s
+        secure_public_url = public_url.scheme == "https" && !host.empty?
+        local_public_url = public_url.scheme == "http" && {"localhost", "127.0.0.1", "::1"}.includes?(host)
+
+        unless secure_public_url || local_public_url
+          puts "Config: The value of 'lightious.public_url' must be an absolute HTTPS URL (HTTP is allowed for localhost or loopback development)."
+          exit(1)
+        end
+      end
+    end
 
     if config.invidious_companion.present?
       if config.invidious_companion_key.empty?
