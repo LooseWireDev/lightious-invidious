@@ -15,7 +15,7 @@ module Invidious::Lightious::Pairing
   ENCODED_SECRET_BYTESIZE = 43
   SHA256_HEX_BYTESIZE     = 64
 
-  private USER_CODE_DIGEST_DOMAIN  = "lightious:user-code:v1"
+  private USER_CODE_DIGEST_DOMAIN   = "lightious:user-code:v1"
   private POLL_SECRET_DIGEST_DOMAIN = "lightious:poll-secret:v1"
   private BASE64URL_FINAL_CHARS     = "AEIMQUYcgkosw048"
 
