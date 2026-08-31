@@ -37,7 +37,7 @@ Spectator.describe Invidious::Lightious::Pairing do
       secrets = Array.new(16) { described_class.generate_poll_secret }
 
       expect(secrets).to all(match(/\Alpt_poll_[A-Za-z0-9_-]{43}\z/))
-      expect(secrets).to all(satisfy { |secret| described_class.valid_poll_secret?(secret) })
+      expect(secrets.all? { |secret| described_class.valid_poll_secret?(secret) }).to be_true
       expect(secrets.uniq.size).to eq(secrets.size)
     end
 
@@ -45,7 +45,7 @@ Spectator.describe Invidious::Lightious::Pairing do
       bearers = Array.new(16) { described_class.generate_device_bearer }
 
       expect(bearers).to all(match(/\Alpt_device_[A-Za-z0-9_-]{43}\z/))
-      expect(bearers).to all(satisfy { |bearer| described_class.valid_device_bearer?(bearer) })
+      expect(bearers.all? { |bearer| described_class.valid_device_bearer?(bearer) }).to be_true
       expect(bearers.uniq.size).to eq(bearers.size)
     end
 
