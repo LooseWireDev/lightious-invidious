@@ -42,7 +42,9 @@ jobs:
           fi
 
       - name: Check formatting
-        run: crystal tool format --check
+        run: |
+          crystal tool format
+          git diff --exit-code
 
       - name: Run specs
         run: crystal spec
