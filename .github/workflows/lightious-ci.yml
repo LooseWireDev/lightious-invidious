@@ -13,6 +13,20 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: invidious
+          POSTGRES_USER: kemal
+          POSTGRES_PASSWORD: kemal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kemal -d invidious"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout fork
         uses: actions/checkout@v7
@@ -20,7 +34,7 @@ jobs:
           submodules: true
 
       - name: Install system dependency
-        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+        run: sudo apt-get update && sudo apt-get install -y jq libsqlite3-dev postgresql-client
 
       - name: Install Crystal
         uses: crystal-lang/install-crystal@v1.9.2
@@ -51,3 +65,54 @@ jobs:
 
       - name: Compile Invidious
         run: crystal build -Dskip_videojs_download --warnings all --error-on-warnings --error-trace src/invidious.cr
+
+      - name: Initialize test database
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          POSTGRES_DB: invidious
+          POSTGRES_USER: kemal
+          PGPASSWORD: kemal
+        run: ./docker/init-invidious-db.sh
+
+      - name: Smoke-test Lightious pairing API
+        env:
+          INVIDIOUS_CONFIG: |
+            db:
+              dbname: invidious
+              user: kemal
+              password: kemal
+              host: 127.0.0.1
+              port: 5432
+            check_tables: true
+            hmac_key: "lightious-ci-hmac-key"
+            lightious:
+              enabled: true
+              pairing_ttl_minutes: 10
+              public_url: "http://localhost:3000"
+        run: |
+          ./invidious > /tmp/lightious-invidious.log 2>&1 &
+          server_pid=$!
+          cleanup() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              cat /tmp/lightious-invidious.log
+            fi
+            kill "$server_pid" || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          curl --fail --silent --show-error \
+            --retry 20 --retry-delay 1 --retry-all-errors \
+            http://127.0.0.1:3000/api/v1/stats > /dev/null
+          response="$(curl --fail --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"deviceLabel":"CI Light Phone","deviceBearerDigest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' \
+            http://127.0.0.1:3000/api/lightious/v1/pairings)"
+          jq --exit-status '
+            (.pairingId | test("^[0-9a-f]{32}$")) and
+            (.userCode | test("^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$")) and
+            (.pollSecret | test("^lpt_poll_[A-Za-z0-9_-]{43}$")) and
+            (.verificationUrl == "http://localhost:3000/lightious/pair")
+          ' <<< "$response" > /dev/null
