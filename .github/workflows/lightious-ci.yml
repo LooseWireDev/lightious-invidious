@@ -1,0 +1,51 @@
+name: Lightious server CI
+
+on:
+  push:
+    branches: [lightious]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Install system dependency
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1.9.2
+        with:
+          crystal: 1.20.3
+
+      - name: Cache shards
+        uses: actions/cache@v6
+        with:
+          path: |
+            ./lib
+            ./bin
+          key: lightious-shards-${{ hashFiles('shard.lock') }}
+
+      - name: Install shards
+        run: |
+          if ! shards check; then
+            shards install --skip-postinstall --skip-executables
+          fi
+
+      - name: Check formatting
+        run: crystal tool format --check
+
+      - name: Run specs
+        run: crystal spec
+
+      - name: Compile Invidious
+        run: crystal build -Dskip_videojs_download --warnings all --error-on-warnings --error-trace src/invidious.cr
