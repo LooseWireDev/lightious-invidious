@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **Lightious Invidious fork — under development.** This repository is a
+> modified fork of [iv-org/invidious](https://github.com/iv-org/invidious) for
+> the Lightious companion control plane and Light Phone III client. Work on the
+> fork began on 2026-08-30. No Lightious server features are release-ready yet.
+> The fork and its modifications remain licensed under the GNU AGPL-3.0; the
+> complete upstream project information follows below.
+
 <div align="center">
   <img src="assets/invidious-colored-vector.svg" width="192" height="192" alt="Invidious logo">
   <h1>Invidious</h1>
