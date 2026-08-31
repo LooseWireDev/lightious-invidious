@@ -119,7 +119,7 @@ module Invidious::Lightious::Pairing
 
     Crypto::Subtle.constant_time_compare(
       device_bearer_digest(device_bearer),
-      expected_digest
+      expected_digest,
     )
   end
 
