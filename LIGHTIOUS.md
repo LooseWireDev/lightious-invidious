@@ -57,9 +57,33 @@ without making the Lightious credential an OAuth token:
 6. The server atomically creates the device using the previously supplied
    credential hash. The plaintext device credential never crosses the network.
 
-Pairing codes are single-use, attempt-limited, rate-limited, and stored only as
-keyed hashes. Device credentials are random opaque bearer tokens stored only as
-hashes and can be revoked per device from the companion page.
+Pairing codes are single-use, short-lived, and stored only as keyed hashes.
+Device credentials are random opaque bearer tokens stored only as hashes and
+can be revoked per device from the companion page. Production deployments must
+also rate-limit pairing creation and code-preview requests at the trusted
+reverse proxy; forwarded client-address headers are not trusted in application
+code.
+
+## Current device API
+
+The first vertical slice is revisioned and intentionally small:
+
+- `POST /api/lightious/v1/pairings` accepts a phone-generated device-credential
+  digest and returns a pairing ID, polling secret, user code, verification URL,
+  and expiry.
+- `GET /api/lightious/v1/pairings/:id` uses the polling secret to report
+  `pending`, `claimed`, `consumed`, or `expired` without exposing account
+  credentials.
+- `POST /api/lightious/v1/pairings/:id/activate` atomically installs the
+  pre-committed device digest after browser approval and is safe to retry after
+  a lost response.
+- `GET /api/lightious/v1/sync` accepts only the opaque Lightious device bearer
+  and returns the mode, profile revision, masked account label, and curated
+  video policies.
+
+All device responses use `Cache-Control: no-store`. Browser mutations use the
+normal Invidious SID plus a signed CSRF scope; the device API never accepts an
+Invidious SID or API token as a Lightious credential.
 
 ## Fork surface
 
@@ -92,9 +116,10 @@ restrictions do not reduce phone-streaming bandwidth when `local=true` is used.
 ## Initial delivery slices
 
 1. Pairing tables, device credential authentication, companion pairing page,
-   and device pairing API.
-2. Companion settings plus revisioned device sync.
-3. Curated video library with `listen_only` and `watch_and_listen` enforcement.
+   and device pairing API. **Implemented in the first vertical slice.**
+2. Companion mode setting plus revisioned device sync. **Implemented.**
+3. Explicit-video library with `listen_only` and `watch_and_listen` policy.
+   **Implemented; enforcement lives in the Kotlin client.**
 4. Bounded channel policies and a companion review inbox.
 5. Optional custom-instance provider.
 
