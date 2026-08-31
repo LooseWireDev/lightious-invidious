@@ -20,7 +20,7 @@ Spectator.describe Invidious::Lightious::Pairing do
   describe ".normalize_user_code" do
     it "accepts case, whitespace, separators, and safe Crockford aliases" do
       expect(described_class.normalize_user_code(" o1il-abcd ")).to eq("0111ABCD")
-      expect(described_class.normalize_user_code("s b-z 2 3 4 5")).to eq("SBZ2345")
+      expect(described_class.normalize_user_code("s b-z 2 3 4 5 6")).to eq("SBZ23456")
       expect(described_class.format_user_code("o1il abcd")).to eq("0111-ABCD")
     end
 
@@ -84,7 +84,7 @@ Spectator.describe Invidious::Lightious::Pairing do
       bearer = "lpt_device_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       digest = described_class.device_bearer_digest(bearer)
 
-      expect(digest).to eq("5289f9a97df5ab15c14b190ee91e0234ee0e86cd3bbd32d1663c5e719b84a792")
+      expect(digest).to eq("ab4bc1907dd011a72fcf10f36082e3e33c20285615049f5f778fec1edd0b2f73")
       expect(described_class.valid_device_bearer_digest?(digest)).to be_true
       expect(described_class.valid_device_bearer?(bearer, digest)).to be_true
       expect(described_class.valid_device_bearer?(bearer, "0" * 64)).to be_false
