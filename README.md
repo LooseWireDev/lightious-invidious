@@ -6,6 +6,26 @@
 > The fork and its modifications remain licensed under the GNU AGPL-3.0; the
 > complete upstream project information follows below.
 
+## Lightious companion additions
+
+When the Lightious feature flag is enabled, signed-in Invidious users get a
+separate, non-playing companion. `/lightious` configures the phone experience
+and paired phones; `/lightious/library` is the canonical place to search for
+videos and channels, add one result or a checkbox selection, manage focused
+library policy, and reach private Lightious playlists. Search results never
+link to the Invidious player. The old `/lightious/search` URL redirects to the
+library while preserving its query string.
+
+Light Phone III clients pair with a 12-character `XXXX-XXXX-XXXX` code. The
+sync API keeps explicit videos, whole-channel permissions, and Lightious-owned
+playlists separate so a playlist cannot grant playback beyond its selected
+videos. Whole-channel pages combine only uploads and livestreams; they never
+request a Shorts source. Shorts are never offered as Lightious content: the
+companion, library, playlists, channel views, and device APIs filter them, and
+direct attempts to add or play a known Short are denied. These additions remain
+under development and are intended for the experimental sideloaded Lightious
+client.
+
 <div align="center">
   <img src="assets/invidious-colored-vector.svg" width="192" height="192" alt="Invidious logo">
   <h1>Invidious</h1>
