@@ -75,8 +75,68 @@ jobs:
           PGPASSWORD: kemal
         run: ./docker/init-invidious-db.sh
 
+      - name: Simulate an existing Lightious installation
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: invidious
+          PGUSER: kemal
+          PGPASSWORD: kemal
+        run: |
+          psql --set ON_ERROR_STOP=1 <<'SQL'
+          DROP TABLE public.lightious_playlist_items;
+          DROP TABLE public.lightious_playlists;
+          DROP TABLE public.lightious_channels;
+          ALTER TABLE public.lightious_items DROP COLUMN author_ucid;
+          ALTER TABLE public.lightious_items DROP COLUMN library_visible;
+          ALTER TABLE public.lightious_items DROP COLUMN is_short;
+          ALTER TABLE public.lightious_profiles ALTER COLUMN mode SET DEFAULT 'explore';
+
+          INSERT INTO users (email) VALUES ('lightious-ci-upgrade');
+          INSERT INTO lightious_profiles (id, invidious_user_email)
+            VALUES ('ci-upgrade-profile', 'lightious-ci-upgrade');
+          INSERT INTO lightious_items (
+            id, profile_id, video_id, title, author, length_seconds,
+            playback_policy
+          ) VALUES
+            (
+              'ci-upgrade-channel-video', 'ci-upgrade-profile',
+              'aqz-KE-bpKQ', 'Channel video cache item', 'CI channel', 60,
+              'listen_only'
+            ),
+            (
+              'ci-upgrade-cached-video', 'ci-upgrade-profile',
+              'M7lc1UVf-VE', 'Video cache item', 'CI cached channel', 61,
+              'listen_only'
+            ),
+            (
+              'ci-upgrade-cached-short', 'ci-upgrade-profile',
+              'SHORTTEST01', 'Cached Short', 'CI cached channel', 45,
+              'listen_only'
+            );
+          INSERT INTO channel_videos (id, ucid)
+            VALUES ('aqz-KE-bpKQ', 'UC5H_KXkPbEsGs0tFt8R35mA');
+          INSERT INTO videos (id, info, updated) VALUES
+            (
+              'M7lc1UVf-VE',
+              '{"ucid":"UC-lHJZR3Gqxm24_Vd_AJ5Yw"}',
+              now()
+            ),
+            (
+              'SHORTTEST01',
+              '{"ucid":"UC-lHJZR3Gqxm24_Vd_AJ5Yw","videoType":"Video","streamingData":{"adaptiveFormats":[{"width":720,"height":1280}]}}',
+              now()
+            );
+          SQL
+
       - name: Smoke-test Lightious pairing API
         env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: invidious
+          PGUSER: kemal
+          PGPASSWORD: kemal
+          LIGHTIOUS_DATABASE_SPEC_URL: postgres://kemal:kemal@127.0.0.1:5432/invidious
           INVIDIOUS_CONFIG: |
             db:
               dbname: invidious
@@ -84,7 +144,7 @@ jobs:
               password: kemal
               host: 127.0.0.1
               port: 5432
-            check_tables: true
+            check_tables: false
             hmac_key: "lightious-ci-hmac-key"
             lightious:
               enabled: true
@@ -105,6 +165,188 @@ jobs:
           curl --fail --silent --show-error \
             --retry 20 --retry-delay 1 --retry-all-errors \
             http://127.0.0.1:3000/api/v1/stats > /dev/null
+          library_status="$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' \
+            http://127.0.0.1:3000/lightious/library)"
+          test "$library_status" = "302"
+          search_redirect="$(curl --silent --show-error --output /dev/null \
+            --write-out '%{redirect_url}' \
+            'http://127.0.0.1:3000/lightious/search?q=Lance%20Hedrick&type=video&page=2')"
+          test "$search_redirect" = \
+            'http://127.0.0.1:3000/lightious/library?q=Lance%20Hedrick&type=video&page=2'
+          psql --set ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('public.lightious_channels') IS NULL
+              OR to_regclass('public.lightious_playlists') IS NULL
+              OR to_regclass('public.lightious_playlist_items') IS NULL THEN
+              RAISE EXCEPTION 'Lightious startup did not provision the focused-library schema';
+            END IF;
+
+            IF (
+              SELECT author_ucid
+              FROM lightious_items
+              WHERE id = 'ci-upgrade-channel-video'
+            ) IS DISTINCT FROM 'UC5H_KXkPbEsGs0tFt8R35mA' THEN
+              RAISE EXCEPTION 'channel_videos author backfill failed';
+            END IF;
+
+            IF (
+              SELECT author_ucid
+              FROM lightious_items
+              WHERE id = 'ci-upgrade-cached-video'
+            ) IS DISTINCT FROM 'UC-lHJZR3Gqxm24_Vd_AJ5Yw' THEN
+              RAISE EXCEPTION 'videos cache author backfill failed';
+            END IF;
+
+            IF EXISTS (
+              SELECT 1
+              FROM lightious_items
+              WHERE NOT library_visible
+            ) THEN
+              RAISE EXCEPTION 'legacy library items were not upgraded as visible';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'lightious_items'
+                AND column_name = 'library_visible'
+                AND data_type = 'boolean'
+                AND is_nullable = 'NO'
+                AND column_default = 'true'
+            ) THEN
+              RAISE EXCEPTION 'library visibility column was not upgraded to boolean NOT NULL DEFAULT true';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'lightious_items'
+                AND column_name = 'is_short'
+                AND data_type = 'boolean'
+                AND is_nullable = 'NO'
+                AND column_default = 'false'
+            ) THEN
+              RAISE EXCEPTION 'Short quarantine column was not upgraded to boolean NOT NULL DEFAULT false';
+            END IF;
+
+            IF (
+              SELECT is_short
+              FROM lightious_items
+              WHERE id = 'ci-upgrade-cached-short'
+            ) IS DISTINCT FROM true THEN
+              RAISE EXCEPTION 'cached portrait Short was not quarantined during upgrade';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM pg_indexes
+              WHERE schemaname = 'public'
+                AND tablename = 'lightious_items'
+                AND indexname = 'lightious_items_profile_library_added_at_idx'
+                AND indexdef LIKE '%library_visible%'
+                AND indexdef LIKE '%NOT is_short%'
+            ) THEN
+              RAISE EXCEPTION 'Short-safe visible-library partial index was not provisioned';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM pg_constraint
+              WHERE conname = 'lightious_playlists_name_check'
+                AND conrelid = 'public.lightious_playlists'::regclass
+                AND pg_get_constraintdef(oid) LIKE '%100%'
+            ) THEN
+              RAISE EXCEPTION 'playlist name constraint was not upgraded to 100 bytes';
+            END IF;
+
+            IF (
+              SELECT column_default
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'lightious_profiles'
+                AND column_name = 'mode'
+            ) IS DISTINCT FROM '''focused''::text' THEN
+              RAISE EXCEPTION 'Lightious profile default was not upgraded to focused';
+            END IF;
+
+            IF (
+              SELECT mode
+              FROM lightious_profiles
+              WHERE id = 'ci-upgrade-profile'
+            ) IS DISTINCT FROM 'explore' THEN
+              RAISE EXCEPTION 'existing profile mode changed during default upgrade';
+            END IF;
+          END
+          $$;
+          SQL
+          psql --set ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO users (email) VALUES ('lightious-ci-sync');
+          INSERT INTO lightious_profiles (id, invidious_user_email)
+            VALUES ('ci-profile', 'lightious-ci-sync');
+          INSERT INTO lightious_items (
+            id, profile_id, video_id, title, author, author_ucid,
+            length_seconds, playback_policy, library_visible, is_short
+          ) VALUES
+            (
+              'ci-item', 'ci-profile', 'dQw4w9WgXcQ', 'CI video', 'CI channel',
+              'UC5H_KXkPbEsGs0tFt8R35mA', 42, 'listen_only', true, false
+            ),
+            (
+              'ci-playlist-only-item', 'ci-profile', 'M7lc1UVf-VE',
+              'CI playlist-only video', 'CI channel',
+              'UC5H_KXkPbEsGs0tFt8R35mA', 43, 'listen_only', false, false
+            ),
+            (
+              'ci-blocked-short', 'ci-profile', 'SHORTSYNC01',
+              'CI quarantined Short', 'CI channel',
+              'UC5H_KXkPbEsGs0tFt8R35mA', 44, 'listen_only', true, true
+            );
+          INSERT INTO lightious_channels (
+            id, profile_id, ucid, title, playback_policy
+          ) VALUES (
+            'ci-channel', 'ci-profile', 'UC5H_KXkPbEsGs0tFt8R35mA',
+            'CI channel', 'watch_and_listen'
+          );
+          INSERT INTO lightious_playlists (id, profile_id, name)
+            VALUES ('ci-playlist', 'ci-profile', 'CI playlist');
+          INSERT INTO lightious_playlist_items (playlist_id, item_id, position)
+            VALUES
+              ('ci-playlist', 'ci-item', 0),
+              ('ci-playlist', 'ci-playlist-only-item', 1),
+              ('ci-playlist', 'ci-blocked-short', 2);
+          INSERT INTO lightious_devices (id, profile_id, bearer_digest, label)
+            VALUES (
+              'ci-device', 'ci-profile',
+              'ab4bc1907dd011a72fcf10f36082e3e33c20285615049f5f778fec1edd0b2f73',
+              'CI Light Phone'
+            );
+          SQL
+          sync_response="$(curl --fail --silent --show-error \
+            --header 'Authorization: Bearer lpt_device_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' \
+            http://127.0.0.1:3000/api/lightious/v1/sync)"
+          jq --exit-status '
+            (.mode == "focused") and
+            (.blockedVideoIds == ["SHORTSYNC01"]) and
+            (.items | length == 1) and
+            (.items[0].videoId == "dQw4w9WgXcQ") and
+            (([.items[].videoId] | index("SHORTSYNC01")) == null) and
+            (.items[0].authorId == "UC5H_KXkPbEsGs0tFt8R35mA") and
+            (.items[0] | has("authorUcid") | not) and
+            (.channels | length == 1) and
+            (.channels[0].name == "CI channel") and
+            (.channels[0] | has("title") | not) and
+            (.playlists | length == 1) and
+            (.playlists[0].name == "CI playlist") and
+            (.playlists[0].items | length == 2) and
+            (([.playlists[].items[].videoId] | index("SHORTSYNC01")) == null) and
+            (([.playlists[0].items[].videoId] | sort) ==
+              (["M7lc1UVf-VE", "dQw4w9WgXcQ"] | sort))
+          ' <<< "$sync_response" > /dev/null
+          crystal spec spec/invidious/lightious/database_integration_check.cr
           response="$(curl --fail --silent --show-error \
             --request POST \
             --header 'Content-Type: application/json' \
@@ -112,7 +354,7 @@ jobs:
             http://127.0.0.1:3000/api/lightious/v1/pairings)"
           jq --exit-status '
             (.pairingId | test("^[0-9a-f]{32}$")) and
-            (.userCode | test("^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$")) and
+            (.userCode | test("^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$")) and
             (.pollSecret | test("^lpt_poll_[A-Za-z0-9_-]{43}$")) and
             (.verificationUrl == "http://localhost:3000/lightious/pair")
           ' <<< "$response" > /dev/null

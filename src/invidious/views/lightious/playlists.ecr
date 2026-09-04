@@ -1,0 +1,56 @@
+<% content_for "header" do %>
+<title>Playlists · Lightious</title>
+<meta name="description" content="Create private video groupings for your Lightious phone.">
+<% end %>
+
+<div class="lightious-dashboard" data-lightious-page="playlists">
+    <aside class="lightious-intro">
+        <p class="lightious-kicker">Playlists</p>
+        <h1>Group what belongs together.</h1>
+        <p class="lightious-lede">A playlist is its own collection. Its videos do not have to appear in the main Videos list.</p>
+        <dl class="lightious-stats" aria-label="Playlist summary">
+            <div class="lightious-stat"><dt>Playlists</dt><dd><%= playlists.size %></dd></div>
+            <div class="lightious-stat"><dt>Videos</dt><dd><%= total_playlist_items %></dd></div>
+        </dl>
+        <nav class="lightious-section-index" aria-label="Playlist sections">
+            <a href="#new-playlist">New playlist</a>
+            <a href="#your-playlists">Your playlists</a>
+        </nav>
+    </aside>
+
+    <div class="lightious-workspace">
+        <% if notice %>
+            <div class="lightious-notice" role="status" aria-live="polite"><span class="lightious-notice-mark" aria-hidden="true">●</span><span><%= HTML.escape(notice.not_nil!) %></span></div>
+        <% end %>
+
+        <section class="lightious-section" id="new-playlist" aria-labelledby="new-playlist-title">
+            <header class="lightious-section-header"><div><p class="lightious-section-label">New playlist</p><h2 id="new-playlist-title">Start with a name.</h2></div></header>
+            <form action="/lightious/playlists" method="post">
+                <label class="lightious-field" for="lightious-playlist-name">
+                    <span class="lightious-field-label">Playlist name</span>
+                    <input id="lightious-playlist-name" name="name" type="text" maxlength="<%= MAX_PLAYLIST_NAME_BYTES %>" required placeholder="Late night listening">
+                </label>
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <div class="lightious-section-actions"><button class="lightious-action" type="submit">Create playlist</button></div>
+            </form>
+        </section>
+
+        <section class="lightious-section" id="your-playlists" aria-labelledby="playlist-library-title">
+            <header class="lightious-section-header">
+                <div><p class="lightious-section-label">Your playlists</p><h2 id="playlist-library-title"><%= playlists.empty? ? "Nothing arranged yet." : "Choose one to edit." %></h2></div>
+            </header>
+            <% if playlists.empty? %>
+                <p class="lightious-empty">Create a playlist above, then search for videos from inside it.</p>
+            <% else %>
+                <div class="lightious-list">
+                    <% playlists.each do |playlist| %>
+                        <a class="lightious-list-row lightious-row-link" href="/lightious/playlists/<%= playlist.id %>">
+                            <span class="lightious-row-copy"><span class="lightious-section-label">Playlist</span><strong class="lightious-row-title"><%= HTML.escape(playlist.name) %></strong></span>
+                            <span class="lightious-list-count"><%= playlist_item_counts[playlist.id] %> videos</span>
+                        </a>
+                    <% end %>
+                </div>
+            <% end %>
+        </section>
+    </div>
+</div>

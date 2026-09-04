@@ -7,6 +7,9 @@ psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/channel_vi
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/users.sql
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_profiles.sql
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_items.sql
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_channels.sql
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_playlists.sql
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_playlist_items.sql
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_pairings.sql
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/lightious_devices.sql
 psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" < config/sql/session_ids.sql

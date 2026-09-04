@@ -1,38 +1,57 @@
 <% content_for "header" do %>
-<title>Pair Lightious</title>
+<title>Pair a phone · Lightious</title>
+<meta name="description" content="Pair a Light Phone with the Lightious companion.">
 <% end %>
 
-<div class="pure-g">
-    <div class="pure-u-1 pure-u-lg-1-5"></div>
-    <div class="pure-u-1 pure-u-lg-3-5">
-        <div class="h-box">
-            <h1>Pair Lightious</h1>
-            <p>On the phone, open Settings → Companion → Pair this phone. Enter the eight-character code here.</p>
+<div class="lightious-pair-layout" data-lightious-page="pair">
+    <aside class="lightious-intro">
+        <p class="lightious-kicker">Pairing</p>
+        <h1>Bring your phone into focus.</h1>
+        <p class="lightious-lede">
+            In Lightious, open Settings → Companion → Pair this phone. Then enter the 12-character code here.
+        </p>
+    </aside>
 
-            <% if error_message %>
-                <p><strong><%= HTML.escape(error_message.not_nil!) %></strong></p>
-            <% end %>
+    <section class="lightious-pair-panel" aria-labelledby="pair-title">
+        <% if error_message %>
+            <div class="lightious-error" role="alert">
+                <span class="lightious-notice-mark" aria-hidden="true">●</span>
+                <span><%= HTML.escape(error_message.not_nil!) %></span>
+            </div>
+        <% end %>
 
-            <% if pending_pairing %>
-                <h2>Approve this phone?</h2>
-                <p><strong><%= HTML.escape(pending_pairing.not_nil!.device_label) %></strong></p>
-                <p>The phone will get a separate, revocable Lightious credential. It will not receive your Invidious password, browser session, or API token.</p>
-                <form class="pure-form" action="/lightious/pair" method="post">
-                    <input type="hidden" name="user_code" value="<%= HTML.escape(user_code) %>">
-                    <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
-                    <button class="pure-button pure-button-primary" type="submit">Approve phone</button>
-                    <a class="pure-button" href="/lightious/pair">Cancel</a>
-                </form>
-            <% else %>
-                <form class="pure-form pure-form-stacked" action="/lightious/pair/preview" method="post">
-                    <label for="user-code">Pairing code</label>
-                    <input id="user-code" name="user_code" type="text" required maxlength="12" autocomplete="one-time-code" value="<%= HTML.escape(user_code) %>" placeholder="ABCD-EFGH">
-                    <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
-                    <button class="pure-button pure-button-primary" type="submit">Continue</button>
-                    <a class="pure-button" href="/lightious">Back</a>
-                </form>
-            <% end %>
-        </div>
-    </div>
-    <div class="pure-u-1 pure-u-lg-1-5"></div>
+        <% if pending_pairing %>
+            <p class="lightious-section-label">Approve device</p>
+            <h2 id="pair-title">Is this your phone?</h2>
+            <p class="lightious-device-name"><%= HTML.escape(pending_pairing.not_nil!.device_label) %></p>
+            <p>
+                This phone receives its own revocable Lightious credential. Your Invidious password, browser session, and API token stay here.
+            </p>
+
+            <form action="/lightious/pair" method="post">
+                <input type="hidden" name="user_code" value="<%= HTML.escape(user_code) %>">
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <div class="lightious-action-row">
+                    <a class="lightious-action lightious-action-secondary" href="/lightious/pair">Cancel</a>
+                    <button class="lightious-action" type="submit">Approve phone</button>
+                </div>
+            </form>
+        <% else %>
+            <p class="lightious-section-label">Enter code</p>
+            <h2 id="pair-title">Pair a phone</h2>
+            <p>Pairing codes expire quickly and can only be used once.</p>
+
+            <form action="/lightious/pair/preview" method="post">
+                <label class="lightious-field lightious-code-field" for="user-code">
+                    <span class="lightious-field-label">Pairing code</span>
+                    <input id="user-code" name="user_code" type="text" required maxlength="14" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" value="<%= HTML.escape(user_code) %>" placeholder="ABCD-EFGH-JKMN">
+                </label>
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <div class="lightious-action-row">
+                    <a class="lightious-action lightious-action-secondary" href="/lightious">Back</a>
+                    <button class="lightious-action" type="submit">Continue</button>
+                </div>
+            </form>
+        <% end %>
+    </section>
 </div>

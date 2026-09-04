@@ -1,0 +1,105 @@
+<% content_for "header" do %>
+<title><%= HTML.escape(playlist.name) %> · Lightious</title>
+<meta name="description" content="Search for and arrange videos in this private Lightious playlist.">
+<% end %>
+
+<div class="lightious-dashboard" data-lightious-page="playlist">
+    <aside class="lightious-intro">
+        <p class="lightious-kicker"><a class="lightious-inline-link" href="/lightious/playlists">Playlists</a> / Edit</p>
+        <h1><%= HTML.escape(playlist.name) %></h1>
+        <p class="lightious-lede">Search for videos here. Choose whether each addition belongs only to this playlist or to the main library too.</p>
+        <dl class="lightious-stats" aria-label="Playlist summary">
+            <div class="lightious-stat"><dt>Videos</dt><dd><%= playlist_items.size %></dd></div>
+            <div class="lightious-stat"><dt>In library</dt><dd><%= playlist_items.count(&.library_visible) %></dd></div>
+        </dl>
+        <nav class="lightious-section-index" aria-label="Playlist sections">
+            <a href="#playlist-videos">Videos</a>
+            <a href="#find-videos">Find videos</a>
+            <a href="#playlist-settings">Settings</a>
+        </nav>
+    </aside>
+
+    <div class="lightious-workspace">
+        <% if notice %><div class="lightious-notice" role="status" aria-live="polite"><span class="lightious-notice-mark" aria-hidden="true">●</span><span><%= HTML.escape(notice.not_nil!) %></span></div><% end %>
+
+        <section class="lightious-section" id="playlist-videos" aria-labelledby="playlist-videos-title">
+            <header class="lightious-section-header">
+                <div><p class="lightious-section-label">This playlist</p><h2 id="playlist-videos-title"><%= playlist_items.empty? ? "No videos yet." : "#{playlist_items.size} selected videos" %></h2></div>
+            </header>
+            <% if playlist_items.empty? %>
+                <p class="lightious-empty">Use the search below to add the first one.</p>
+            <% else %>
+                <form class="lightious-selection-form" action="/lightious/playlists/<%= playlist.id %>/items/remove" method="post" data-selection-form>
+                    <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                    <div class="lightious-list-heading"><span class="lightious-field-label">Select videos to remove</span><button class="lightious-action lightious-action-secondary" type="button" data-select-all>Select all</button></div>
+                    <div class="lightious-list">
+                        <% playlist_items.each do |item| %>
+                            <label class="lightious-list-row lightious-library-choice" data-selectable-row>
+                                <input type="checkbox" name="item_ids[]" value="<%= item.id %>">
+                                <span class="lightious-row-copy"><strong class="lightious-row-title"><%= HTML.escape(item.title) %></strong><span class="lightious-row-meta"><%= HTML.escape(item.author) %> · <%= item.library_visible ? "Also in Videos" : "Playlist only" %></span></span>
+                                <span class="lightious-policy-mark"><%= item.playback_policy == "listen_only" ? "Audio" : "Video" %></span>
+                            </label>
+                        <% end %>
+                    </div>
+                    <div class="lightious-selection-rail" data-selection-rail><span class="lightious-selection-count" data-selection-count aria-live="polite">0 selected</span><span class="lightious-selection-context">Remove from this playlist</span><button class="lightious-action" type="submit">Remove</button></div>
+                </form>
+            <% end %>
+        </section>
+
+        <section class="lightious-section" id="find-videos" aria-labelledby="find-videos-title">
+            <header class="lightious-section-header"><div><p class="lightious-section-label">Add videos</p><h2 id="find-videos-title">Search from this playlist.</h2></div></header>
+            <form action="/lightious/playlists/<%= playlist.id %>" method="get" role="search">
+                <label class="lightious-field" for="playlist-search-query"><span class="lightious-field-label">Search YouTube</span><input id="playlist-search-query" name="q" type="search" value="<%= HTML.escape(search_query) %>" maxlength="<%= MAX_SEARCH_QUERY_BYTES %>" required autocomplete="off" placeholder="Video, person, or subject"></label>
+                <div class="lightious-section-actions"><button class="lightious-action" type="submit">Search videos</button></div>
+            </form>
+
+            <% if search_error %>
+                <div class="lightious-error" role="alert"><%= HTML.escape(search_error.not_nil!) %></div>
+            <% elsif !search_query.empty? %>
+                <% if search_videos.empty? %>
+                    <p class="lightious-empty">No videos were found. Try another search.</p>
+                <% else %>
+                    <form class="lightious-selection-form lightious-result-group" action="/lightious/playlists/<%= playlist.id %>/search/add" method="post" data-selection-form>
+                        <input type="hidden" name="q" value="<%= HTML.escape(search_query) %>">
+                        <input type="hidden" name="page" value="<%= search_page %>">
+                        <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                        <div class="lightious-list-heading"><span class="lightious-field-label"><%= search_videos.size %> videos found</span><button class="lightious-action lightious-action-secondary" type="button" data-select-all>Select all</button></div>
+                        <div class="lightious-list lightious-search-results">
+                            <% search_videos.each do |item| %>
+                                <label class="lightious-list-row lightious-search-choice lightious-search-choice-full" data-selectable-row>
+                                    <input type="checkbox" name="selection[]" value="video:<%= item.id %>">
+                                    <img class="lightious-search-thumbnail" src="/vi/<%= item.id %>/mqdefault.jpg" alt="" width="112" height="63" loading="lazy">
+                                    <span class="lightious-row-copy"><span class="lightious-section-label"><%= item.badges.live_now? ? "Live now" : "Video" %></span><strong class="lightious-row-title"><%= HTML.escape(item.title) %></strong><span class="lightious-row-meta"><%= HTML.escape(item.author) %><% if item.length_seconds > 0 %> · <%= recode_length_seconds(item.length_seconds) %><% end %></span></span>
+                                </label>
+                            <% end %>
+                        </div>
+                        <div class="lightious-selection-rail" data-selection-rail>
+                            <span class="lightious-selection-count" data-selection-count aria-live="polite">0 selected</span>
+                            <label class="lightious-rail-field"><span>Add selected as</span><select name="library_action"><option value="playlist:audio">Playlist only · audio</option><option value="playlist:video">Playlist only · video</option><option value="library_and_playlist:audio">Playlist + library · audio</option><option value="library_and_playlist:video">Playlist + library · video</option></select></label>
+                            <button class="lightious-action" type="submit">Add</button>
+                        </div>
+                    </form>
+                    <% if search_page > 1 || show_next_page %>
+                        <nav class="lightious-action-row" aria-label="Search result pages">
+                            <% if search_page > 1 %><% previous_query = URI::Params.encode({q: search_query, page: (search_page - 1).to_s}) %><a class="lightious-action lightious-action-secondary" href="/lightious/playlists/<%= playlist.id %>?<%= previous_query %>#find-videos">Previous</a><% end %>
+                            <% if show_next_page %><% next_query = URI::Params.encode({q: search_query, page: (search_page + 1).to_s}) %><a class="lightious-action" href="/lightious/playlists/<%= playlist.id %>?<%= next_query %>#find-videos">Next</a><% end %>
+                        </nav>
+                    <% end %>
+                <% end %>
+            <% end %>
+        </section>
+
+        <section class="lightious-section" id="playlist-settings" aria-labelledby="playlist-settings-title">
+            <header class="lightious-section-header"><div><p class="lightious-section-label">Settings</p><h2 id="playlist-settings-title">Name or remove this playlist.</h2></div></header>
+            <form action="/lightious/playlists/<%= playlist.id %>/rename" method="post">
+                <label class="lightious-field" for="playlist-name"><span class="lightious-field-label">Name</span><input id="playlist-name" name="name" type="text" maxlength="<%= MAX_PLAYLIST_NAME_BYTES %>" required value="<%= HTML.escape(playlist.name) %>"></label>
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <div class="lightious-section-actions"><button class="lightious-action" type="submit">Rename</button></div>
+            </form>
+            <form action="/lightious/playlists/<%= playlist.id %>/delete" method="post">
+                <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                <div class="lightious-section-actions"><button class="lightious-action lightious-action-secondary" type="submit">Delete playlist</button></div>
+            </form>
+        </section>
+    </div>
+</div>

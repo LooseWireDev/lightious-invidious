@@ -8,6 +8,14 @@ module Invidious::Database::Users
   # -------------------
 
   def insert(user : User, update_on_conflict : Bool = false)
+    execute_insert(PG_DB, user, update_on_conflict)
+  end
+
+  def insert(connection : DB::Connection, user : User, update_on_conflict : Bool = false)
+    execute_insert(connection, user, update_on_conflict)
+  end
+
+  private def execute_insert(connection, user : User, update_on_conflict : Bool)
     user_array = user.to_a
     user_array[4] = user_array[4].to_json # User preferences
 
@@ -23,7 +31,7 @@ module Invidious::Database::Users
       SQL
     end
 
-    PG_DB.exec(request, args: user_array)
+    connection.exec(request, args: user_array)
   end
 
   def delete(user : User)

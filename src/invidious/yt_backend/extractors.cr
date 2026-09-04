@@ -130,6 +130,15 @@ private module Parsers
 
       premiere_timestamp = item_contents.dig?("upcomingEventData", "startTime").try { |t| Time.unix(t.as_s.to_i64) }
       badges = VideoBadges::None
+      if item_contents.dig?("navigationEndpoint", "reelWatchEndpoint") ||
+         item_contents.dig?("navigationEndpoint", "commandMetadata", "webCommandMetadata", "url")
+           .try(&.as_s.starts_with?("/shorts/")) ||
+         item_contents["thumbnailOverlays"]?.try(&.as_a.any? do |overlay|
+           overlay.dig?("thumbnailOverlayTimeStatusRenderer", "text", "simpleText")
+             .try(&.as_s.==("SHORTS"))
+         end)
+        badges |= VideoBadges::Shorts
+      end
       item_contents["badges"]?.try &.as_a.each do |badge|
         b = badge["metadataBadgeRenderer"]
         case b["label"]?.try &.as_s
@@ -621,7 +630,7 @@ private module Parsers
         premiere_timestamp: Time.unix(0),
         author_verified:    false,
         author_thumbnail:   nil,
-        badges:             VideoBadges::None,
+        badges:             VideoBadges::Shorts,
       })
     end
 
@@ -884,7 +893,7 @@ private module Parsers
         premiere_timestamp: Time.unix(0),
         author_verified:    false,
         author_thumbnail:   nil,
-        badges:             VideoBadges::None,
+        badges:             VideoBadges::Shorts,
       })
     end
 

@@ -124,7 +124,7 @@ end
 
 class APIHandler < Kemal::Handler
   {% for method in %w(GET POST PUT HEAD DELETE PATCH OPTIONS) %}
-    only ["/api/v1/*", "/api/lightious/v1/*"], {{method}}
+    only ["/api/v1/*"], {{method}}
   {% end %}
   exclude ["/api/v1/auth/notifications"], "GET"
   exclude ["/api/v1/auth/notifications"], "POST"

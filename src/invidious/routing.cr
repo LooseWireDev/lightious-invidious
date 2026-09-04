@@ -87,13 +87,31 @@ module Invidious::Routing
     return unless CONFIG.lightious.enabled
 
     get "/lightious", Routes::LightiousControl, :dashboard
+    get "/lightious/library", Routes::LightiousControl, :library
+    get "/lightious/search", Routes::LightiousControl, :search
+    get "/lightious/playlists", Routes::LightiousControl, :playlists_page
+    get "/lightious/playlists/:id", Routes::LightiousControl, :playlist_page
+    get "/lightious/channels/:ucid", Routes::LightiousControl, :channel_page
     get "/lightious/pair", Routes::LightiousControl, :pair_page
     post "/lightious/pair/preview", Routes::LightiousControl, :preview_pairing
     post "/lightious/pair", Routes::LightiousControl, :claim_pairing
     post "/lightious/mode", Routes::LightiousControl, :update_mode
-    post "/lightious/videos", Routes::LightiousControl, :add_video
+    post "/lightious/library/add", Routes::LightiousControl, :add_library_selections
+    post "/lightious/videos/bulk", Routes::LightiousControl, :bulk_videos
     post "/lightious/videos/:id/policy", Routes::LightiousControl, :update_video_policy
     post "/lightious/videos/:id/delete", Routes::LightiousControl, :delete_video
+    # Radix requires sibling dynamic segments under one method/prefix to use
+    # the same key, even though these routes carry two kinds of channel ID.
+    post "/lightious/channels/:ucid/policy", Routes::LightiousControl, :update_channel_policy
+    post "/lightious/channels/:ucid/delete", Routes::LightiousControl, :delete_channel
+    post "/lightious/channels/bulk", Routes::LightiousControl, :bulk_channels
+    post "/lightious/channels/:ucid/add", Routes::LightiousControl, :add_explicit_channel
+    post "/lightious/channels/:ucid/videos/add", Routes::LightiousControl, :add_channel_video_selections
+    post "/lightious/playlists", Routes::LightiousControl, :create_playlist
+    post "/lightious/playlists/:id/rename", Routes::LightiousControl, :rename_playlist
+    post "/lightious/playlists/:id/items/remove", Routes::LightiousControl, :remove_playlist_items
+    post "/lightious/playlists/:id/search/add", Routes::LightiousControl, :add_playlist_search_selections
+    post "/lightious/playlists/:id/delete", Routes::LightiousControl, :delete_playlist
     post "/lightious/devices/:id/revoke", Routes::LightiousControl, :revoke_device
   end
 
@@ -352,5 +370,14 @@ module Invidious::Routing
     get "/api/lightious/v1/pairings/:id", Routes::API::Lightious::V1, :pairing_status
     post "/api/lightious/v1/pairings/:id/activate", Routes::API::Lightious::V1, :activate_pairing
     get "/api/lightious/v1/sync", Routes::API::Lightious::V1, :sync
+    get "/api/lightious/v1/feed", Routes::API::Lightious::V1, :feed
+    get "/api/lightious/v1/history", Routes::API::Lightious::V1, :history
+    post "/api/lightious/v1/history/:id", Routes::API::Lightious::V1, :mark_watched
+    get "/api/lightious/v1/popular", Routes::API::Lightious::V1, :popular
+    get "/api/lightious/v1/search", Routes::API::Lightious::V1, :search
+    get "/api/lightious/v1/channels/:ucid/videos", Routes::API::Lightious::V1, :channel_videos
+    get "/api/lightious/v1/videos/:id", Routes::API::Lightious::V1, :video
+    get "/api/lightious/v1/media", Routes::API::Lightious::V1, :media
+    options "/api/lightious/v1/media", Routes::API::Lightious::V1, :media_options
   end
 end

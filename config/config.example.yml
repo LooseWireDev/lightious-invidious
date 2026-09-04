@@ -107,15 +107,41 @@ db:
 ## The public URL is used to generate the verification address shown during
 ## pairing. Use HTTPS in production; localhost HTTP is accepted for development.
 ## Pairing requests may live for 1 to 60 minutes.
-## Rate-limit /api/lightious/v1/pairings and /lightious/pair/preview at the
+## Lockdown defaults on when Lightious is enabled and hides generic Invidious
+## browse, playback, media-proxy, and API routes. Disable it only for an
+## intentional combined Lightious and ordinary Invidious deployment.
+## Pairing and login limits are also enforced in-process; mirror them at the
 ## trusted reverse proxy before exposing this service publicly.
 ##
 ## Default: disabled, 10-minute pairing lifetime, no public URL
 ##
 #lightious:
 #  enabled: false
+#  lockdown: true
 #  pairing_ttl_minutes: 10
 #  public_url: "https://lightious.example.com"
+#  security:
+#    login_account_limit: 5
+#    login_ip_limit: 20
+#    login_global_limit: 200
+#    login_window_minutes: 15
+#    pairing_ip_limit: 10
+#    pairing_global_limit: 500
+#    pairing_window_minutes: 10
+#    max_tracked_keys: 10000
+##    Only trust a client-IP header when the origin is reachable exclusively
+##    through a proxy that overwrites it. Otherwise leave this unset.
+#    trusted_client_ip_header: "CF-Connecting-IP"
+##    Optional Cloudflare Turnstile login protection. Configure both keys and
+##    keep the secret in a mounted production config, never in source control.
+##    `turnstile_hostname` is a bare hostname, without a scheme, port, or path.
+##    Every Lightious-enabled local-account login is protected, even when
+##    lockdown is disabled. For a public deployment, set public_url and enable
+##    Turnstile or the built-in CAPTCHA. Running with both protections disabled
+##    is supported only for localhost development.
+#    turnstile_site_key: ""
+#    turnstile_secret_key: ""
+#    turnstile_hostname: "lightious.example.com"
 
 #########################################
 #

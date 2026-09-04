@@ -1,0 +1,104 @@
+<% content_for "header" do %>
+<title><%= HTML.escape(channel.author) %> · Lightious</title>
+<meta name="description" content="Browse and select videos from this channel for Lightious.">
+<% end %>
+
+<div class="lightious-dashboard" data-lightious-page="channel">
+    <aside class="lightious-intro">
+        <p class="lightious-kicker"><a class="lightious-inline-link" href="/lightious/library#channels">Library</a> / Channel</p>
+        <h1><%= HTML.escape(channel.author) %></h1>
+        <p class="lightious-lede">Browse uploads and livestreams without opening a player. Adding one video never adds the whole channel.</p>
+        <dl class="lightious-stats" aria-label="Channel summary">
+            <div class="lightious-stat"><dt>Subscribers</dt><dd><%= channel.sub_count %></dd></div>
+            <div class="lightious-stat"><dt>Access</dt><dd><%= added_channel ? "Channel added" : "Videos only" %></dd></div>
+        </dl>
+        <nav class="lightious-section-index" aria-label="Channel sections">
+            <a href="#channel-access">Channel access</a>
+            <a href="#channel-search">Search</a>
+            <a href="#channel-videos">Videos</a>
+        </nav>
+    </aside>
+
+    <div class="lightious-workspace">
+        <% if notice %><div class="lightious-notice" role="status" aria-live="polite"><span class="lightious-notice-mark" aria-hidden="true">●</span><span><%= HTML.escape(notice.not_nil!) %></span></div><% end %>
+
+        <section class="lightious-section" id="channel-access" aria-labelledby="channel-access-title">
+            <header class="lightious-section-header">
+                <div><p class="lightious-section-label">Channel access</p><h2 id="channel-access-title"><%= added_channel ? "This whole channel is available." : "Keep it video by video—or add everything." %></h2></div>
+            </header>
+            <% if added_channel %>
+                <p class="lightious-section-copy">The phone receives this channel independently from any individual videos below. Change its default from the Channels list.</p>
+                <a class="lightious-action" href="/lightious/library#channels">Manage channel</a>
+            <% else %>
+                <form action="/lightious/channels/<%= channel.ucid %>/add" method="post">
+                    <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                    <div class="lightious-inline-control">
+                        <label class="lightious-field" for="channel-policy"><span class="lightious-field-label">Add the whole channel as</span><select id="channel-policy" name="library_action"><option value="library:audio">Audio</option><option value="library:video">Video</option></select></label>
+                        <button class="lightious-action" type="submit">Add channel</button>
+                    </div>
+                </form>
+            <% end %>
+        </section>
+
+        <section class="lightious-section" id="channel-search" aria-labelledby="channel-search-title">
+            <header class="lightious-section-header"><div><p class="lightious-section-label">Within this channel</p><h2 id="channel-search-title">Find a specific video.</h2></div></header>
+            <form action="/lightious/channels/<%= channel.ucid %>" method="get" role="search">
+                <label class="lightious-field" for="channel-search-query"><span class="lightious-field-label">Search <%= HTML.escape(channel.author) %></span><input id="channel-search-query" name="q" type="search" value="<%= HTML.escape(channel_search_query) %>" maxlength="<%= MAX_SEARCH_QUERY_BYTES %>" autocomplete="off" placeholder="Title or subject"></label>
+                <div class="lightious-section-actions"><button class="lightious-action" type="submit">Search channel</button></div>
+            </form>
+        </section>
+
+        <section class="lightious-section" id="channel-videos" aria-labelledby="channel-videos-title">
+            <header class="lightious-section-header">
+                <div>
+                    <p class="lightious-section-label"><%= channel_search_query.empty? ? "Browse channel" : "Channel search" %></p>
+                    <h2 id="channel-videos-title"><% if channel_search_query.empty? %><%= channel_tab_label %><% else %><%= HTML.escape(channel_search_query) %><% end %></h2>
+                </div>
+                <span class="lightious-list-count"><%= channel_results.size %> shown</span>
+            </header>
+
+            <% if channel_search_query.empty? %>
+                <nav class="lightious-segmented-nav" aria-label="Channel video types">
+                    <a href="/lightious/channels/<%= channel.ucid %>?tab=all#channel-videos" <% if channel_tab == "all" %>aria-current="page"<% end %>>All</a>
+                    <a href="/lightious/channels/<%= channel.ucid %>?tab=videos#channel-videos" <% if channel_tab == "videos" %>aria-current="page"<% end %>>Videos</a>
+                    <% if channel.tabs.includes?("streams") %><a href="/lightious/channels/<%= channel.ucid %>?tab=streams#channel-videos" <% if channel_tab == "streams" %>aria-current="page"<% end %>>Live</a><% end %>
+                </nav>
+            <% end %>
+
+            <% if channel_error %>
+                <div class="lightious-error" role="alert"><%= HTML.escape(channel_error.not_nil!) %></div>
+            <% elsif channel_results.empty? %>
+                <p class="lightious-empty">No matching videos were found here.</p>
+            <% else %>
+                <form class="lightious-selection-form" action="/lightious/channels/<%= channel.ucid %>/videos/add" method="post" data-selection-form>
+                    <input type="hidden" name="q" value="<%= HTML.escape(channel_search_query) %>">
+                    <input type="hidden" name="tab" value="<%= HTML.escape(channel_tab) %>">
+                    <input type="hidden" name="page" value="<%= channel_search_page %>">
+                    <input type="hidden" name="csrf_token" value="<%= HTML.escape(csrf_token) %>">
+                    <div class="lightious-list-heading"><span class="lightious-field-label">Select videos to add</span><button class="lightious-action lightious-action-secondary" type="button" data-select-all>Select all</button></div>
+                    <div class="lightious-list lightious-search-results">
+                        <% channel_results.each do |item| %>
+                            <label class="lightious-list-row lightious-search-choice lightious-search-choice-full" data-selectable-row>
+                                <input type="checkbox" name="selection[]" value="video:<%= item.id %>">
+                                <img class="lightious-search-thumbnail" src="/vi/<%= item.id %>/mqdefault.jpg" alt="" width="112" height="63" loading="lazy">
+                                <span class="lightious-row-copy"><span class="lightious-section-label"><%= channel_result_kinds[item.id] %></span><strong class="lightious-row-title"><%= HTML.escape(item.title) %></strong><span class="lightious-row-meta"><% if item.length_seconds > 0 %><%= recode_length_seconds(item.length_seconds) %><% elsif item.badges.live_now? %>Live now<% else %>Duration unavailable<% end %></span></span>
+                            </label>
+                        <% end %>
+                    </div>
+                    <div class="lightious-selection-rail" data-selection-rail>
+                        <span class="lightious-selection-count" data-selection-count aria-live="polite">0 selected</span>
+                        <label class="lightious-rail-field"><span>Send selected to</span><select name="library_action" data-destination-select><optgroup label="Library"><option value="library:audio">Library · audio</option><option value="library:video">Library · video</option></optgroup><optgroup label="Playlist" <% if playlists.empty? %>disabled<% end %>><option value="playlist:audio">Playlist only · audio</option><option value="playlist:video">Playlist only · video</option><option value="library_and_playlist:audio">Playlist + library · audio</option><option value="library_and_playlist:video">Playlist + library · video</option></optgroup></select></label>
+                        <label class="lightious-rail-field" data-playlist-field hidden><span>Playlist</span><select name="playlist_id" disabled><option value="">Choose playlist</option><% playlists.each do |playlist| %><option value="<%= playlist.id %>"><%= HTML.escape(playlist.name) %></option><% end %></select></label>
+                        <button class="lightious-action" type="submit">Add</button>
+                    </div>
+                </form>
+                <% if !channel_search_query.empty? && (channel_search_page > 1 || show_next_page) %>
+                    <nav class="lightious-action-row" aria-label="Channel search pages">
+                        <% if channel_search_page > 1 %><% previous_query = URI::Params.encode({q: channel_search_query, page: (channel_search_page - 1).to_s}) %><a class="lightious-action lightious-action-secondary" href="/lightious/channels/<%= channel.ucid %>?<%= previous_query %>#channel-videos">Previous</a><% end %>
+                        <% if show_next_page %><% next_query = URI::Params.encode({q: channel_search_query, page: (channel_search_page + 1).to_s}) %><a class="lightious-action" href="/lightious/channels/<%= channel.ucid %>?<%= next_query %>#channel-videos">Next</a><% end %>
+                    </nav>
+                <% end %>
+            <% end %>
+        </section>
+    </div>
+</div>

@@ -8,27 +8,261 @@ module Invidious::Database
   # Note: config is passed as a parameter to avoid complex
   # dependencies between different parts of the software.
   def check_integrity(cfg)
-    return if !cfg.check_tables
-    Invidious::Database.check_enum("privacy", PlaylistPrivacy)
+    if cfg.check_tables
+      Invidious::Database.check_enum("privacy", PlaylistPrivacy)
 
-    Invidious::Database.check_table("channels", InvidiousChannel)
-    Invidious::Database.check_table("channel_videos", ChannelVideo)
-    Invidious::Database.check_table("playlists", InvidiousPlaylist)
-    Invidious::Database.check_table("playlist_videos", PlaylistVideo)
-    Invidious::Database.check_table("nonces", Nonce)
-    Invidious::Database.check_table("session_ids", SessionId)
-    Invidious::Database.check_table("users", User)
-    Invidious::Database.check_table("videos", Video)
-
-    if cfg.lightious.enabled
-      Invidious::Database.check_table("lightious_profiles")
-      Invidious::Database.check_table("lightious_items")
-      Invidious::Database.check_table("lightious_pairings")
-      Invidious::Database.check_table("lightious_devices")
+      Invidious::Database.check_table("channels", InvidiousChannel)
+      Invidious::Database.check_table("channel_videos", ChannelVideo)
+      Invidious::Database.check_table("playlists", InvidiousPlaylist)
+      Invidious::Database.check_table("playlist_videos", PlaylistVideo)
+      Invidious::Database.check_table("nonces", Nonce)
+      Invidious::Database.check_table("session_ids", SessionId)
+      Invidious::Database.check_table("users", User)
+      Invidious::Database.check_table("videos", Video)
     end
 
-    if cfg.cache_annotations
+    Invidious::Database.ensure_lightious_schema if cfg.lightious.enabled
+
+    if cfg.check_tables && cfg.cache_annotations
       Invidious::Database.check_table("annotations", Annotation)
+    end
+  end
+
+  # Lightious is an optional application feature rather than a core Invidious
+  # table check. Provision its schema whenever the feature is enabled so an
+  # ordinary server restart is enough to upgrade an existing installation,
+  # even when the expensive general-purpose `check_tables` option is disabled.
+  def ensure_lightious_schema
+    PG_DB.using_connection do |db_conn|
+      conn = db_conn.as(PG::Connection)
+      conn.exec("SELECT pg_advisory_lock(hashtext('invidious'), hashtext('lightious-schema'))")
+
+      begin
+        ensure_lightious_table(conn, "lightious_profiles")
+        ensure_lightious_profile_mode_default(conn)
+        ensure_lightious_item_library_visibility_column(conn)
+        ensure_lightious_item_short_column(conn)
+        ensure_lightious_table(conn, "lightious_items")
+        ensure_lightious_item_library_visibility(conn)
+        ensure_lightious_item_short_policy(conn)
+        ensure_lightious_item_author_column(conn)
+        backfill_lightious_item_authors(conn)
+        ensure_lightious_item_author_constraint(conn)
+
+        ensure_lightious_table(conn, "lightious_channels")
+        ensure_lightious_table(conn, "lightious_playlists")
+        ensure_lightious_playlist_name_constraint(conn)
+        ensure_lightious_table(conn, "lightious_playlist_items")
+        ensure_lightious_table(conn, "lightious_pairings")
+        ensure_lightious_table(conn, "lightious_devices")
+      ensure
+        conn.exec("SELECT pg_advisory_unlock(hashtext('invidious'), hashtext('lightious-schema'))")
+      end
+    end
+  end
+
+  private def ensure_lightious_table(conn : PG::Connection, table_name : String)
+    conn.exec_all(File.read("config/sql/#{table_name}.sql"))
+  end
+
+  private def ensure_lightious_profile_mode_default(conn : PG::Connection)
+    # CREATE TABLE IF NOT EXISTS does not update an existing column default.
+    # Preserve every user's selected mode while making only future profiles
+    # Focused-first when an older Lightious schema is upgraded in place.
+    conn.exec <<-SQL
+    ALTER TABLE public.lightious_profiles
+      ALTER COLUMN mode SET DEFAULT 'focused';
+    SQL
+  end
+
+  private def ensure_lightious_item_author_column(conn : PG::Connection)
+    conn.exec("ALTER TABLE public.lightious_items ADD COLUMN IF NOT EXISTS author_ucid text")
+
+    # A partially deployed schema may have accepted malformed identifiers before
+    # the constraint was present. Treat those values as unknown so provisioning
+    # remains repeatable and a valid cached value can replace them below.
+    conn.exec <<-SQL
+    UPDATE public.lightious_items
+    SET author_ucid = NULL
+    WHERE author_ucid IS NOT NULL
+      AND author_ucid !~ '^UC[A-Za-z0-9_-]{22}$';
+    SQL
+  end
+
+  private def ensure_lightious_item_library_visibility_column(conn : PG::Connection)
+    # The table SQL creates a partial index that references this column. Add the
+    # column first on legacy tables; a fresh install creates both together from
+    # config/sql/lightious_items.sql.
+    conn.exec <<-SQL
+    DO $$
+    BEGIN
+      IF to_regclass('public.lightious_items') IS NOT NULL THEN
+        ALTER TABLE public.lightious_items
+          ADD COLUMN IF NOT EXISTS library_visible boolean;
+      END IF;
+    END
+    $$;
+    SQL
+  end
+
+  private def ensure_lightious_item_short_column(conn : PG::Connection)
+    # The fresh-table SQL has an index predicate that references this column.
+    # Add it before reading that file when upgrading an existing installation.
+    conn.exec <<-SQL
+    DO $$
+    BEGIN
+      IF to_regclass('public.lightious_items') IS NOT NULL THEN
+        ALTER TABLE public.lightious_items
+          ADD COLUMN IF NOT EXISTS is_short boolean;
+      END IF;
+    END
+    $$;
+    SQL
+  end
+
+  private def ensure_lightious_item_library_visibility(conn : PG::Connection)
+    # CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
+    # Existing items were all top-level library entries before playlist-only
+    # storage existed, so the only safe upgrade value is visible.
+    conn.exec("ALTER TABLE public.lightious_items ADD COLUMN IF NOT EXISTS library_visible boolean")
+    conn.exec("UPDATE public.lightious_items SET library_visible = true WHERE library_visible IS NULL")
+    conn.exec <<-SQL
+    ALTER TABLE public.lightious_items
+      ALTER COLUMN library_visible SET DEFAULT true,
+      ALTER COLUMN library_visible SET NOT NULL;
+    SQL
+    conn.exec <<-SQL
+    CREATE INDEX IF NOT EXISTS lightious_items_profile_library_added_at_idx
+      ON public.lightious_items (profile_id, added_at DESC)
+      WHERE library_visible;
+    SQL
+  end
+
+  private def ensure_lightious_item_short_policy(conn : PG::Connection)
+    conn.exec("ALTER TABLE public.lightious_items ADD COLUMN IF NOT EXISTS is_short boolean")
+    conn.exec("UPDATE public.lightious_items SET is_short = false WHERE is_short IS NULL")
+
+    # Existing Lightious rows predate the explicit marker. Quarantine only the
+    # entries that cached metadata can positively identify by the Shorts length
+    # limit and square/portrait video streams. Ambiguous legacy rows remain
+    # available until their metadata is refreshed at playback time.
+    begin
+      result = conn.exec <<-SQL
+      UPDATE public.lightious_items AS item
+      SET is_short = true
+      FROM public.videos AS cached
+      WHERE cached.id = item.video_id
+        AND NOT item.is_short
+        AND item.length_seconds BETWEEN 1 AND 180
+        AND COALESCE(cached.info::jsonb ->> 'videoType', 'Video') = 'Video'
+        AND jsonb_path_exists(
+          cached.info::jsonb,
+          '$.streamingData.*[*] ? (@.width > 0 && @.height > 0 && @.height >= @.width)'
+        );
+      SQL
+      LOGGER.info("ensure_lightious_schema: quarantined #{result.rows_affected} cached Shorts") if result.rows_affected > 0
+    rescue ex
+      LOGGER.warn("ensure_lightious_schema: could not classify cached Shorts: #{ex.message}")
+    end
+
+    conn.exec <<-SQL
+    ALTER TABLE public.lightious_items
+      ALTER COLUMN is_short SET DEFAULT false,
+      ALTER COLUMN is_short SET NOT NULL;
+    SQL
+    conn.exec("DROP INDEX IF EXISTS public.lightious_items_profile_library_added_at_idx")
+    conn.exec <<-SQL
+    CREATE INDEX lightious_items_profile_library_added_at_idx
+      ON public.lightious_items (profile_id, added_at DESC)
+      WHERE library_visible AND NOT is_short;
+    SQL
+  end
+
+  private def backfill_lightious_item_authors(conn : PG::Connection)
+    begin
+      result = conn.exec <<-SQL
+      UPDATE public.lightious_items AS item
+      SET author_ucid = channel_video.ucid
+      FROM public.channel_videos AS channel_video
+      WHERE item.author_ucid IS NULL
+        AND channel_video.id = item.video_id
+        AND channel_video.ucid ~ '^UC[A-Za-z0-9_-]{22}$';
+      SQL
+      LOGGER.info("ensure_lightious_schema: restored #{result.rows_affected} item channel IDs from channel_videos") if result.rows_affected > 0
+    rescue ex
+      LOGGER.warn("ensure_lightious_schema: could not backfill item channel IDs from channel_videos: #{ex.message}")
+    end
+
+    begin
+      result = conn.exec <<-SQL
+      UPDATE public.lightious_items AS item
+      SET author_ucid = cached.author_ucid
+      FROM (
+        SELECT
+          id AS video_id,
+          substring(
+            info FROM '"ucid"[[:space:]]*:[[:space:]]*"(UC[A-Za-z0-9_-]{22})"'
+          ) AS author_ucid
+        FROM public.videos
+      ) AS cached
+      WHERE item.author_ucid IS NULL
+        AND cached.video_id = item.video_id
+        AND cached.author_ucid IS NOT NULL;
+      SQL
+      LOGGER.info("ensure_lightious_schema: restored #{result.rows_affected} item channel IDs from cached videos") if result.rows_affected > 0
+    rescue ex
+      LOGGER.warn("ensure_lightious_schema: could not backfill item channel IDs from cached videos: #{ex.message}")
+    end
+  end
+
+  private def ensure_lightious_item_author_constraint(conn : PG::Connection)
+    conn.exec <<-SQL
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'lightious_items_author_ucid_check'
+          AND conrelid = 'public.lightious_items'::regclass
+      ) THEN
+        ALTER TABLE public.lightious_items
+          ADD CONSTRAINT lightious_items_author_ucid_check
+          CHECK (author_ucid IS NULL OR author_ucid ~ '^UC[A-Za-z0-9_-]{22}$');
+      END IF;
+    END
+    $$;
+    SQL
+  end
+
+  private def ensure_lightious_playlist_name_constraint(conn : PG::Connection)
+    conn.exec <<-SQL
+    DO $$
+    DECLARE
+      constraint_definition text;
+    BEGIN
+      SELECT pg_get_constraintdef(oid)
+      INTO constraint_definition
+      FROM pg_constraint
+      WHERE conname = 'lightious_playlists_name_check'
+        AND conrelid = 'public.lightious_playlists'::regclass;
+
+      IF constraint_definition IS NULL OR position('100' IN constraint_definition) = 0 THEN
+        ALTER TABLE public.lightious_playlists
+          DROP CONSTRAINT IF EXISTS lightious_playlists_name_check;
+        ALTER TABLE public.lightious_playlists
+          ADD CONSTRAINT lightious_playlists_name_check
+          CHECK (octet_length(name) BETWEEN 1 AND 100) NOT VALID;
+      END IF;
+    END
+    $$;
+    SQL
+
+    begin
+      conn.exec("ALTER TABLE public.lightious_playlists VALIDATE CONSTRAINT lightious_playlists_name_check")
+    rescue ex
+      # Existing names are not discarded or truncated during an upgrade. The
+      # NOT VALID constraint still enforces the 100-byte limit for new writes.
+      LOGGER.warn("ensure_lightious_schema: existing playlist names exceed 100 bytes; the new limit applies to future writes: #{ex.message}")
     end
   end
 

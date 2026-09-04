@@ -30,16 +30,45 @@ services:
           host: invidious-db
           port: 5432
         check_tables: true
+        invidious_companion:
+          - private_url: "http://companion:8282/companion"
+        invidious_companion_key: "${INVIDIOUS_COMPANION_KEY:?set a 16-character alphanumeric key}"
+        lightious:
+          enabled: true
+          lockdown: true
+          public_url: "http://localhost:3000"
         # external_port:
         # domain:
         # https_only: false
         # statistics_enabled: false
-        hmac_key: "CHANGE_ME!!"
+        hmac_key: "${LIGHTIOUS_HMAC_KEY:?set a strong random Lightious HMAC key}"
+    # Both Invidious and Companion make YouTube requests. The development host
+    # may use a tailnet DNS policy that intentionally blocks youtube.com.
+    dns:
+      - "${INVIDIOUS_COMPANION_DNS:-1.1.1.1}"
     healthcheck:
       test: wget -nv --tries=1 --spider http://127.0.0.1:3000/api/v1/stats || exit 1
       interval: 30s
       timeout: 5s
       retries: 2
+
+  companion:
+    image: quay.io/invidious/invidious-companion:2026.08.10-16cf10e@sha256:298cad3da121cc6ee290f00e6cc02a64feb36085097a3bba03d88eaa31d4dafd
+    restart: unless-stopped
+    environment:
+      SERVER_SECRET_KEY: "${INVIDIOUS_COMPANION_KEY:?set a 16-character alphanumeric key}"
+    # The development host may use a tailnet DNS policy that blocks YouTube.
+    # Override this variable if a different resolver is required.
+    dns:
+      - "${INVIDIOUS_COMPANION_DNS:-1.1.1.1}"
+    cap_drop:
+      - ALL
+    read_only: true
+    user: "10001:10001"
+    volumes:
+      - companioncache:/var/tmp/youtubei.js:rw
+    security_opt:
+      - no-new-privileges:true
 
   invidious-db:
     image: docker.io/library/postgres:14
@@ -57,3 +86,4 @@ services:
 
 volumes:
   postgresdata:
+  companioncache:

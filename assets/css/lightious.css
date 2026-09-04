@@ -1,0 +1,1234 @@
+/*
+ * Lightious companion UI
+ *
+ * This stylesheet is loaded only by the companion layout. It translates the
+ * LightOS token system to the web without bundling the licensed Akkurat font.
+ */
+
+.lightious-theme-dark {
+  --lightious-background: #000000;
+  --lightious-content: #ffffff;
+  --lightious-secondary: #bbbbbb;
+  --lightious-rule: #4a4a4a;
+  --lightious-faint: #191919;
+  color-scheme: dark;
+}
+
+.lightious-theme-light {
+  --lightious-background: #ffffff;
+  --lightious-content: #000000;
+  --lightious-secondary: #666666;
+  --lightious-rule: #b8b8b8;
+  --lightious-faint: #eeeeee;
+  color-scheme: light;
+}
+
+.lightious-theme-auto {
+  --lightious-background: #ffffff;
+  --lightious-content: #000000;
+  --lightious-secondary: #666666;
+  --lightious-rule: #b8b8b8;
+  --lightious-faint: #eeeeee;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lightious-theme-auto {
+    --lightious-background: #000000;
+    --lightious-content: #ffffff;
+    --lightious-secondary: #bbbbbb;
+    --lightious-rule: #4a4a4a;
+    --lightious-faint: #191919;
+    color-scheme: dark;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.lightious-body {
+  --lightious-topbar-height: 78px;
+  --lightious-shell-gutter: clamp(1.25rem, 4vw, 3rem);
+  min-width: 300px;
+  margin: 0;
+  background: var(--lightious-background);
+  color: var(--lightious-content);
+  font-family: "Akkurat LL", Akkurat, "Helvetica Neue", "Nimbus Sans L", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.lightious-body *,
+.lightious-body *::before,
+.lightious-body *::after {
+  box-sizing: border-box;
+}
+
+.lightious-body a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lightious-body button,
+.lightious-body input,
+.lightious-body select {
+  font: inherit;
+}
+
+.lightious-body button,
+.lightious-body select,
+.lightious-body input[type="radio"],
+.lightious-body input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.lightious-body input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 1.5px solid var(--lightious-content);
+  border-radius: 2px;
+  background: var(--lightious-background);
+  box-shadow: none;
+}
+
+.lightious-body input[type="checkbox"]::after {
+  width: 6px;
+  height: 11px;
+  border: solid var(--lightious-background);
+  border-width: 0 2px 2px 0;
+  content: "";
+  opacity: 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+
+.lightious-body input[type="checkbox"]:checked {
+  background: var(--lightious-content);
+}
+
+.lightious-body input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
+.lightious-body input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.lightious-body ::selection {
+  background: var(--lightious-content);
+  color: var(--lightious-background);
+}
+
+.lightious-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lightious-skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.65rem 0.9rem;
+  background: var(--lightious-content);
+  color: var(--lightious-background) !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateY(-180%);
+}
+
+.lightious-skip-link:focus {
+  transform: translateY(0);
+}
+
+.lightious-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.lightious-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  width: 100%;
+  min-height: var(--lightious-topbar-height);
+  padding: 1rem var(--lightious-shell-gutter);
+  border-bottom: 1px solid var(--lightious-rule);
+  background: var(--lightious-background);
+}
+
+.lightious-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.22rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.lightious-wordmark-mark {
+  position: relative;
+  width: 15px;
+  height: 25px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.lightious-wordmark-mark::after {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.lightious-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(1rem, 2.2vw, 2rem);
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lightious-nav a,
+.lightious-nav button {
+  position: relative;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.lightious-nav a::after,
+.lightious-nav button::after,
+.lightious-action::after {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  left: 0;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 130ms ease-out;
+}
+
+.lightious-nav a:hover::after,
+.lightious-nav button:hover::after,
+.lightious-action:hover::after {
+  transform: scaleX(1);
+}
+
+.lightious-nav a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+.lightious-theme-toggle {
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+}
+
+.lightious-theme-toggle::after {
+  display: none;
+}
+
+.lightious-theme-toggle svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.lightious-signout {
+  margin: 0;
+}
+
+.lightious-main {
+  flex: 1;
+  width: 100%;
+}
+
+.lightious-dashboard,
+.lightious-pair-layout {
+  --lightious-shell-top-pad: 2rem;
+  display: grid;
+  align-items: start;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 7rem);
+  width: 100%;
+  margin: 0;
+  padding: var(--lightious-shell-top-pad) var(--lightious-shell-gutter) 8rem;
+}
+
+.lightious-intro {
+  align-self: start;
+  position: sticky;
+  top: calc(var(--lightious-topbar-height) + var(--lightious-shell-top-pad));
+}
+
+.lightious-kicker,
+.lightious-section-label,
+.lightious-field-label,
+.lightious-stat dt,
+.lightious-list-count {
+  margin: 0;
+  color: var(--lightious-secondary);
+  font-size: 0.73rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.lightious-intro h1 {
+  max-width: 10ch;
+  margin: 1rem 0 1.4rem;
+  font-size: clamp(2.75rem, 4.5vw, 4.6rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1.01;
+}
+
+.lightious-lede {
+  max-width: 24rem;
+  margin: 0;
+  color: var(--lightious-secondary);
+  font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+  line-height: 1.55;
+}
+
+.lightious-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  margin: 2.4rem 0 0;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--lightious-rule);
+}
+
+.lightious-stat {
+  margin: 0;
+}
+
+.lightious-stat dd {
+  margin: 0.45rem 0 0;
+  font-size: 1.05rem;
+}
+
+.lightious-section-index {
+  display: grid;
+  gap: 0;
+  margin-top: 2.2rem;
+  border-top: 1px solid var(--lightious-rule);
+}
+
+.lightious-section-index a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 48px;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--lightious-rule);
+  color: var(--lightious-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lightious-section-index a:hover,
+.lightious-section-index a:focus-visible {
+  color: var(--lightious-content);
+}
+
+.lightious-workspace {
+  min-width: 0;
+}
+
+.lightious-notice,
+.lightious-error {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 2.8rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--lightious-content);
+  border-bottom: 1px solid var(--lightious-content);
+}
+
+.lightious-notice-mark {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+}
+
+.lightious-section {
+  padding: 2.25rem 0 3.5rem;
+  border-top: 1px solid var(--lightious-rule);
+  scroll-margin-top: 110px;
+}
+
+.lightious-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.lightious-section-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.65rem;
+}
+
+.lightious-section h2,
+.lightious-pair-panel h2,
+.lightious-auth h1 {
+  margin: 0.55rem 0 0;
+  font-size: clamp(1.8rem, 3vw, 2.45rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+}
+
+.lightious-section-copy {
+  max-width: 38rem;
+  margin: -0.5rem 0 1.75rem;
+  color: var(--lightious-secondary);
+}
+
+.lightious-choice-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lightious-mode-options {
+  border-top: 1px solid var(--lightious-rule);
+}
+
+.lightious-mode-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 98px;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--lightious-rule);
+  cursor: pointer;
+}
+
+.lightious-mode-copy strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.lightious-mode-copy span {
+  display: block;
+  max-width: 34rem;
+  color: var(--lightious-secondary);
+}
+
+.lightious-mode-option input[type="radio"] {
+  width: 26px;
+  height: 26px;
+  margin: 0.2rem;
+  accent-color: var(--lightious-content);
+}
+
+.lightious-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(190px, 0.75fr);
+  gap: 2rem;
+  align-items: end;
+}
+
+.lightious-field {
+  display: block;
+}
+
+.lightious-field input,
+.lightious-field select,
+.lightious-row-select,
+.lightious-auth-panel input[type="text"],
+.lightious-auth-panel input[type="password"] {
+  width: 100%;
+  min-height: 54px;
+  margin: 0;
+  padding: 0.55rem 0 0.75rem;
+  border: 0;
+  border-bottom: 2px solid var(--lightious-content);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--lightious-content);
+  font-size: 1.12rem;
+}
+
+.lightious-field input::placeholder {
+  color: var(--lightious-secondary);
+  opacity: 1;
+}
+
+.lightious-auth-panel input::placeholder {
+  color: var(--lightious-secondary);
+  opacity: 1;
+}
+
+.lightious-field input:focus,
+.lightious-field select:focus,
+.lightious-row-select:focus,
+.lightious-auth-panel input[type="text"]:focus,
+.lightious-auth-panel input[type="password"]:focus {
+  border-bottom-width: 4px;
+}
+
+.lightious-field-hint {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--lightious-secondary);
+  font-size: 0.85rem;
+}
+
+.lightious-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.35rem;
+}
+
+.lightious-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lightious-content);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.lightious-action::after {
+  bottom: 4px;
+}
+
+.lightious-action-secondary {
+  color: var(--lightious-secondary);
+}
+
+.lightious-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  margin-top: 1.35rem;
+}
+
+.lightious-empty {
+  margin: 0;
+  padding: 2rem 0 1rem;
+  color: var(--lightious-secondary);
+  font-size: 1.08rem;
+}
+
+.lightious-list {
+  border-top: 1px solid var(--lightious-rule);
+}
+
+.lightious-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: center;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--lightious-rule);
+}
+
+.lightious-list-row h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.lightious-list-row strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.lightious-row-copy {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.lightious-row-title {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lightious-row-meta {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  color: var(--lightious-secondary);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.lightious-row-link:hover strong,
+.lightious-inline-link:hover,
+.lightious-row-link:focus-visible strong,
+.lightious-inline-link:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.lightious-inline-link {
+  color: inherit;
+}
+
+.lightious-list-row p {
+  margin: 0.35rem 0 0;
+  color: var(--lightious-secondary);
+}
+
+.lightious-item-id {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lightious-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.lightious-row-actions form {
+  margin: 0;
+}
+
+.lightious-row-select {
+  width: auto;
+  min-width: 165px;
+  min-height: 44px;
+  padding-top: 0.35rem;
+  padding-bottom: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.lightious-search-results {
+  margin-top: 2rem;
+}
+
+.lightious-search-result {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.lightious-search-choice {
+  display: grid;
+  grid-template-columns: 28px 112px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.lightious-search-choice input[type="checkbox"] {
+  margin-top: 0.18rem;
+}
+
+.lightious-search-thumbnail {
+  width: 112px;
+  height: 63px;
+  border: 1px solid var(--lightious-rule);
+  background: var(--lightious-faint);
+  filter: grayscale(1);
+  object-fit: cover;
+}
+
+.lightious-search-channel-thumbnail {
+  width: 63px;
+  border-radius: 50%;
+}
+
+.lightious-search-choice strong {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.lightious-search-choice-full {
+  grid-template-columns: 28px 112px minmax(0, 1fr);
+}
+
+.lightious-result-group {
+  margin-top: 4rem;
+}
+
+.lightious-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 54px;
+  margin-top: 1.2rem;
+  padding-bottom: 0.65rem;
+}
+
+.lightious-list-heading h3 {
+  margin: 0.3rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.lightious-library-choice {
+  grid-template-columns: 24px minmax(0, 1fr) max-content;
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+  padding: 1.15rem 0;
+  cursor: pointer;
+}
+
+.lightious-library-choice input[type="checkbox"] {
+  margin-top: 0.16rem;
+}
+
+.lightious-library-choice > span:not(.lightious-policy-mark) {
+  min-width: 0;
+}
+
+.lightious-library-choice strong,
+.lightious-library-choice > span > span {
+  overflow-wrap: anywhere;
+}
+
+.lightious-policy-mark {
+  align-self: start;
+  justify-self: end;
+  min-width: 4.5rem;
+  padding-top: 0.2rem;
+  color: var(--lightious-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.lightious-list-row:has(input[type="checkbox"]:checked) {
+  background: var(--lightious-faint);
+  box-shadow: inset 3px 0 0 var(--lightious-content);
+}
+
+.lightious-selection-form {
+  min-width: 0;
+}
+
+.lightious-selection-rail {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.55fr) minmax(12rem, 1.35fr) minmax(10rem, 1fr) max-content;
+  align-items: center;
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+  width: 100%;
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  border-top: 1px solid var(--lightious-content);
+  background: var(--lightious-content);
+  color: var(--lightious-background);
+}
+
+.lightious-selection-rail[hidden],
+.lightious-selection-rail [hidden] {
+  display: none !important;
+}
+
+.lightious-selection-count,
+.lightious-selection-context,
+.lightious-rail-field > span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lightious-selection-count,
+.lightious-selection-context {
+  align-self: center;
+}
+
+.lightious-rail-field {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.lightious-rail-field select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.2rem 0;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.88rem;
+}
+
+.lightious-rail-field select option,
+.lightious-rail-field select optgroup {
+  background: var(--lightious-background);
+  color: var(--lightious-content);
+}
+
+.lightious-selection-rail .lightious-action {
+  color: inherit;
+}
+
+.lightious-selection-rail > .lightious-action:last-child {
+  grid-column: 4;
+  min-width: 5.5rem;
+  padding: 0 0.9rem;
+  border: 1px solid currentColor;
+}
+
+.lightious-selection-rail > .lightious-action:last-child::after {
+  display: none;
+}
+
+.lightious-segmented-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 1.5rem;
+  border-top: 1px solid var(--lightious-rule);
+  border-bottom: 1px solid var(--lightious-rule);
+}
+
+.lightious-segmented-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding-right: clamp(1.1rem, 3vw, 2rem);
+  color: var(--lightious-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lightious-segmented-nav a[aria-current="page"] {
+  color: var(--lightious-content);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.55em;
+}
+
+.lightious-inline-control {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  gap: 2rem;
+}
+
+.lightious-bulk-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  margin-top: 0;
+  padding: 1rem 0;
+  border-top: 1px solid var(--lightious-content);
+  background: var(--lightious-background);
+}
+
+.lightious-playlist-choices {
+  margin: 2rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.lightious-playlist-choices legend {
+  margin-bottom: 0.85rem;
+}
+
+.lightious-playlist-choice {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.lightious-playlist-choice input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--lightious-content);
+}
+
+.lightious-playlist-choice strong,
+.lightious-playlist-choice span span {
+  display: block;
+}
+
+.lightious-playlist-choice strong {
+  font-size: 1.12rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.lightious-playlist-choice span span {
+  margin-top: 0.25rem;
+  color: var(--lightious-secondary);
+  font-size: 0.9rem;
+}
+
+.lightious-pair-panel {
+  align-self: start;
+  padding-top: 0.3rem;
+}
+
+.lightious-pair-panel > p {
+  max-width: 38rem;
+  color: var(--lightious-secondary);
+}
+
+.lightious-device-name {
+  margin: 2rem 0 0.35rem !important;
+  color: var(--lightious-content) !important;
+  font-size: 1.5rem;
+}
+
+.lightious-code-field input {
+  max-width: 18rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lightious-auth {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(3.5rem, 9vw, 9rem);
+  width: min(1050px, 100%);
+  margin: 0 auto;
+  padding: clamp(4rem, 10vw, 8rem) clamp(1.25rem, 4vw, 3rem) 8rem;
+}
+
+.lightious-auth-intro p {
+  max-width: 27rem;
+  color: var(--lightious-secondary);
+}
+
+.lightious-auth-panel {
+  align-self: start;
+  padding-top: 0.35rem;
+}
+
+.lightious-auth-panel label {
+  display: block;
+  margin: 0 0 0.35rem;
+  color: var(--lightious-secondary);
+  font-size: 0.73rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.lightious-auth-panel input[type="text"],
+.lightious-auth-panel input[type="password"] {
+  margin-bottom: 2rem;
+}
+
+.lightious-auth fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lightious-auth .lightious-field {
+  margin-bottom: 2rem;
+}
+
+.lightious-login-form .lightious-action {
+  margin-top: 0.5rem;
+}
+
+.lightious-turnstile {
+  width: 100%;
+  min-height: 65px;
+  margin: 0.25rem 0 1rem;
+}
+
+.lightious-captcha {
+  display: block;
+  width: min(100%, 28rem);
+  margin: 0 0 1.5rem;
+  filter: grayscale(1);
+}
+
+.lightious-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+  margin: auto 0 0;
+  padding: 1.5rem var(--lightious-shell-gutter) 2.25rem;
+  border-top: 1px solid var(--lightious-rule);
+  color: var(--lightious-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.lightious-body :focus-visible {
+  outline: 2px solid var(--lightious-content);
+  outline-offset: 5px;
+}
+
+@media (max-width: 1040px) {
+  .lightious-dashboard,
+  .lightious-pair-layout,
+  .lightious-auth {
+    grid-template-columns: 1fr;
+    gap: 4.5rem;
+  }
+
+  .lightious-intro {
+    position: static;
+  }
+
+  .lightious-intro h1 {
+    max-width: 10ch;
+  }
+
+  .lightious-lede {
+    max-width: 38rem;
+  }
+
+  .lightious-section-index {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .lightious-topbar {
+    align-items: flex-start;
+    min-height: 70px;
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+  }
+
+  .lightious-nav {
+    gap: 1rem;
+  }
+
+  .lightious-dashboard,
+  .lightious-pair-layout,
+  .lightious-auth {
+    gap: 3.5rem;
+    padding-top: 3rem;
+    padding-bottom: 5rem;
+  }
+
+  .lightious-intro h1 {
+    font-size: clamp(2.5rem, 12vw, 3.25rem);
+  }
+
+  .lightious-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .lightious-form-grid,
+  .lightious-list-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lightious-library-choice {
+    grid-template-columns: 22px minmax(0, 1fr) max-content;
+  }
+
+  .lightious-search-choice {
+    grid-template-columns: 26px 84px minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .lightious-search-thumbnail {
+    width: 84px;
+    height: 48px;
+  }
+
+  .lightious-search-channel-thumbnail {
+    width: 48px;
+  }
+
+  .lightious-row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lightious-section-actions,
+  .lightious-action-row {
+    justify-content: flex-start;
+  }
+
+  .lightious-selection-rail {
+    position: static;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .lightious-selection-count,
+  .lightious-selection-context {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .lightious-rail-field {
+    grid-column: 1 / -1;
+  }
+
+  .lightious-selection-rail > .lightious-action:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .lightious-inline-control {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .lightious-footer {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 420px) {
+  .lightious-topbar {
+    flex-wrap: wrap;
+    gap: 0.2rem 1rem;
+  }
+
+  .lightious-wordmark {
+    flex: 0 0 100%;
+  }
+
+  .lightious-wordmark-mark {
+    display: none;
+  }
+
+  .lightious-nav {
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .lightious-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .lightious-mode-option {
+    align-items: start;
+  }
+
+  .lightious-library-choice {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .lightious-policy-mark {
+    grid-column: 2;
+    justify-self: start;
+    min-width: 0;
+    padding-top: 0;
+    text-align: left;
+  }
+}
+
+@media (max-width: 360px) {
+  .lightious-topbar {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .lightious-nav {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .lightious-nav a::after,
+  .lightious-nav button::after,
+  .lightious-action::after {
+    transition: none;
+  }
+}

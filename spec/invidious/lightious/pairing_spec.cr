@@ -8,10 +8,10 @@ end
 
 Spectator.describe Invidious::Lightious::Pairing do
   describe ".generate_user_code" do
-    it "generates an eight-character Crockford-style code in two groups" do
+    it "generates a twelve-character Crockford-style code in three groups" do
       codes = Array.new(32) { described_class.generate_user_code }
 
-      expect(codes).to all(match(/\A[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}\z/))
+      expect(codes).to all(match(/\A[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}\z/))
       expect(codes.uniq.size).to be > 1
       expect(codes.join).to_not match(/[ILOU]/)
     end
@@ -19,16 +19,16 @@ Spectator.describe Invidious::Lightious::Pairing do
 
   describe ".normalize_user_code" do
     it "accepts case, whitespace, separators, and safe Crockford aliases" do
-      expect(described_class.normalize_user_code(" o1il-abcd ")).to eq("0111ABCD")
-      expect(described_class.normalize_user_code("s b-z 2 3 4 5 6")).to eq("SBZ23456")
-      expect(described_class.format_user_code("o1il abcd")).to eq("0111-ABCD")
+      expect(described_class.normalize_user_code(" o1il-abcd-efgh ")).to eq("0111ABCDEFGH")
+      expect(described_class.normalize_user_code("s b-z 2 3 4 5 6 7 8 9 a")).to eq("SBZ23456789A")
+      expect(described_class.format_user_code("o1il abcd efgh")).to eq("0111-ABCD-EFGH")
     end
 
     it "rejects invalid characters and the wrong number of symbols" do
-      expect(described_class.normalize_user_code("ABCD-EFG")).to be_nil
-      expect(described_class.normalize_user_code("ABCD-EFGH-J")).to be_nil
-      expect(described_class.normalize_user_code("ABCU-EFGH")).to be_nil
-      expect(described_class.normalize_user_code("ABCD_EFGH")).to be_nil
+      expect(described_class.normalize_user_code("ABCD-EFGH-JKM")).to be_nil
+      expect(described_class.normalize_user_code("ABCD-EFGH-JKMN-P")).to be_nil
+      expect(described_class.normalize_user_code("ABCU-EFGH-JKMN")).to be_nil
+      expect(described_class.normalize_user_code("ABCD_EFGH_JKMN")).to be_nil
     end
   end
 
@@ -62,12 +62,12 @@ Spectator.describe Invidious::Lightious::Pairing do
 
   describe "digests" do
     it "normalizes user codes before applying a domain-separated HMAC" do
-      canonical = described_class.user_code_digest("server key", "0111-ABCD")
-      aliased = described_class.user_code_digest("server key", "o1il abcd")
+      canonical = described_class.user_code_digest("server key", "0111-ABCD-EFGH")
+      aliased = described_class.user_code_digest("server key", "o1il abcd efgh")
 
       expect(canonical).to eq(aliased)
       expect(canonical).to match(/\A[0-9a-f]{64}\z/)
-      expect(described_class.user_code_digest("another key", "0111-ABCD")).to_not eq(canonical)
+      expect(described_class.user_code_digest("another key", "0111-ABCD-EFGH")).to_not eq(canonical)
       expect(described_class.user_code_digest("server key", "invalid!")).to be_nil
     end
 

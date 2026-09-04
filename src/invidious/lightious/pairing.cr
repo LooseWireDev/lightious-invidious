@@ -6,7 +6,7 @@ require "random/secure"
 
 module Invidious::Lightious::Pairing
   USER_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-  USER_CODE_LENGTH   = 8
+  USER_CODE_LENGTH   = 12
 
   POLL_SECRET_PREFIX   = "lpt_poll_"
   DEVICE_BEARER_PREFIX = "lpt_device_"
@@ -26,7 +26,7 @@ module Invidious::Lightious::Pairing
       end
     end
 
-    return "#{normalized[0, 4]}-#{normalized[4, 4]}"
+    return "#{normalized[0, 4]}-#{normalized[4, 4]}-#{normalized[8, 4]}"
   end
 
   # Returns the canonical, unformatted representation used for lookups.
@@ -64,7 +64,7 @@ module Invidious::Lightious::Pairing
     normalized = normalize_user_code(user_code)
     return nil unless normalized
 
-    "#{normalized[0, 4]}-#{normalized[4, 4]}"
+    "#{normalized[0, 4]}-#{normalized[4, 4]}-#{normalized[8, 4]}"
   end
 
   def self.generate_poll_secret : String

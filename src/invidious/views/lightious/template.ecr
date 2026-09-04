@@ -1,0 +1,89 @@
+<%
+  preferences = env.get("preferences").as(Preferences)
+  locale = preferences.locale
+  dark_mode = preferences.dark_mode
+  theme = dark_mode.blank? ? "auto" : dark_mode
+  current_path = env.request.path
+  current_page = env.get?("current_page").try &.as(String) || URI.encode_www_form("/lightious")
+  current_page = URI.encode_www_form("/lightious/pair") if current_path == "/lightious/pair/preview"
+  home_is_current = current_path == "/lightious" || current_path.starts_with?("/lightious/pair")
+  library_is_current = current_path == "/lightious/library" || current_path == "/lightious/search" || current_path.starts_with?("/lightious/playlists") || current_path.starts_with?("/lightious/channels/")
+  theme_action_label = case theme
+                       when "dark"
+                         "Switch to light theme"
+                       when "light"
+                         "Switch to dark theme"
+                       else
+                         "Theme follows your system; switch to dark theme"
+                       end
+  signed_in_user = env.get?("user").try &.as(Invidious::User)
+%>
+<!DOCTYPE html>
+<html lang="<%= HTML.escape(locale) %>">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="<%= theme == "light" ? "#ffffff" : "#000000" %>">
+    <%= yield_content "header" %>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=<%= ASSET_COMMIT %>">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=<%= ASSET_COMMIT %>">
+    <link rel="stylesheet" href="/css/pure-min.css?v=<%= ASSET_COMMIT %>">
+    <link rel="stylesheet" href="/css/lightious.css?v=<%= ASSET_COMMIT %>-companion-8">
+</head>
+<body class="lightious-body lightious-theme-<%= theme %>">
+    <a class="lightious-skip-link" href="#lightious-main">Skip to content</a>
+
+    <div class="lightious-app">
+        <header class="lightious-topbar">
+            <a class="lightious-wordmark" href="/lightious" aria-label="Lightious companion home">
+                <span class="lightious-wordmark-mark" aria-hidden="true"></span>
+                <span>Lightious</span>
+            </a>
+
+            <nav class="lightious-nav" aria-label="Companion navigation">
+                <% if signed_in_user %>
+                    <a href="/lightious"<% if home_is_current %> aria-current="page"<% end %>>Home</a>
+                    <a href="/lightious/library"<% if library_is_current %> aria-current="page"<% end %>>Library</a>
+                <% end %>
+                <a
+                    class="lightious-theme-toggle"
+                    href="/toggle_theme?referer=<%= current_page %>"
+                    aria-label="<%= theme_action_label %>"
+                    title="<%= theme_action_label %>"
+                >
+                    <% if theme == "dark" %>
+                        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                            <circle cx="12" cy="12" r="4"></circle>
+                            <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M19.07 4.93l-1.42 1.42M6.35 17.65l-1.42 1.42"></path>
+                        </svg>
+                    <% else %>
+                        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                            <path d="M20.4 15.4A9 9 0 0 1 8.6 3.6 9 9 0 1 0 20.4 15.4Z"></path>
+                        </svg>
+                    <% end %>
+                </a>
+                <% if signed_in_user %>
+                    <form class="lightious-signout" action="/signout?referer=<%= current_page %>" method="post">
+                        <input type="hidden" name="csrf_token" value="<%= HTML.escape(env.get?("csrf_token").try &.as(String) || "") %>">
+                        <button type="submit">Log out</button>
+                    </form>
+                <% end %>
+            </nav>
+        </header>
+
+        <main class="lightious-main" id="lightious-main">
+            <%= content %>
+        </main>
+
+        <footer class="lightious-footer">
+            <span>Companion for a more intentional phone.</span>
+            <% if CONFIG.modified_source_code_url %>
+                <a href="<%= CONFIG.modified_source_code_url %>">Source</a>
+            <% else %>
+                <a href="https://github.com/iv-org/invidious">Invidious source</a>
+            <% end %>
+        </footer>
+    </div>
+    <script src="/js/lightious.js?v=<%= ASSET_COMMIT %>-selection-3"></script>
+</body>
+</html>

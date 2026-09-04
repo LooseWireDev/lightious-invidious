@@ -216,6 +216,7 @@ end
 # Init Kemal
 
 Kemal.config.powered_by_header = false
+add_handler LightiousLockdownHandler.new
 add_handler FilteredCompressHandler.new
 add_handler APIHandler.new
 add_handler DisableAbusableAPIHandler.new
@@ -236,6 +237,7 @@ add_handler DenyFrame.new
 add_context_storage_type(Array(String))
 add_context_storage_type(Preferences)
 add_context_storage_type(Invidious::User)
+add_context_storage_type(Invidious::Database::Lightious::Device)
 
 Kemal.config.logger = LOGGER
 Kemal.config.app_name = "Invidious"

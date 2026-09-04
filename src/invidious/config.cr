@@ -1,3 +1,5 @@
+require "./lightious/security_inputs"
+
 struct DBConfig
   include YAML::Serializable
 
@@ -86,8 +88,40 @@ class Config
   class LightiousConfig
     include YAML::Serializable
 
+    class SecurityConfig
+      include YAML::Serializable
+
+      # These limits are intentionally enforced in-process as a final line of
+      # defence. A public deployment should also rate-limit at its trusted
+      # reverse proxy, where limits can be shared across replicas.
+      property login_account_limit : Int32 = 5
+      property login_ip_limit : Int32 = 20
+      property login_global_limit : Int32 = 200
+      property login_window_minutes : Int32 = 15
+      property pairing_ip_limit : Int32 = 10
+      property pairing_global_limit : Int32 = 500
+      property pairing_window_minutes : Int32 = 10
+      property max_tracked_keys : Int32 = 10_000
+
+      # Read this header only when the origin accepts traffic exclusively from
+      # the proxy that overwrites it. Directly exposed origins must leave it nil.
+      property trusted_client_ip_header : String? = nil
+
+      # Turnstile is optional for local/private deployments. Supplying one key
+      # without the other is rejected during configuration loading.
+      property turnstile_site_key : String = ""
+      property turnstile_secret_key : String = ""
+      property turnstile_hostname : String? = nil
+
+      def turnstile_enabled? : Bool
+        !turnstile_site_key.empty? && !turnstile_secret_key.empty?
+      end
+    end
+
     property enabled : Bool = false
+    property lockdown : Bool = true
     property pairing_ttl_minutes : Int32 = 10
+    property security : SecurityConfig = SecurityConfig.from_yaml("")
 
     @[YAML::Field(converter: Preferences::URIConverter)]
     property public_url : URI = URI.parse("")
@@ -307,6 +341,69 @@ class Config
           puts "Config: The value of 'lightious.public_url' must be an absolute HTTPS URL (HTTP is allowed for localhost or loopback development)."
           exit(1)
         end
+      end
+
+      security = config.lightious.security
+      limits = {
+        "login_account_limit"  => security.login_account_limit,
+        "login_ip_limit"       => security.login_ip_limit,
+        "login_global_limit"   => security.login_global_limit,
+        "pairing_ip_limit"     => security.pairing_ip_limit,
+        "pairing_global_limit" => security.pairing_global_limit,
+        "max_tracked_keys"     => security.max_tracked_keys,
+      }
+      limits.each do |name, value|
+        unless (1..100_000).includes?(value)
+          puts "Config: The value of 'lightious.security.#{name}' must be between 1 and 100000."
+          exit(1)
+        end
+      end
+
+      {
+        "login_window_minutes"   => security.login_window_minutes,
+        "pairing_window_minutes" => security.pairing_window_minutes,
+      }.each do |name, value|
+        unless (1..1_440).includes?(value)
+          puts "Config: The value of 'lightious.security.#{name}' must be between 1 and 1440."
+          exit(1)
+        end
+      end
+
+      if header = security.trusted_client_ip_header
+        unless header.matches?(/\A[A-Za-z0-9-]{1,64}\z/)
+          puts "Config: The value of 'lightious.security.trusted_client_ip_header' must be a valid HTTP header name."
+          exit(1)
+        end
+      end
+
+      turnstile_values = {
+        security.turnstile_site_key,
+        security.turnstile_secret_key,
+      }
+      if turnstile_values.any? { |value| value != value.strip }
+        puts "Config: Lightious Turnstile keys must not contain leading or trailing whitespace."
+        exit(1)
+      end
+
+      turnstile_keys = turnstile_values.map(&.empty?)
+      if turnstile_keys[0] != turnstile_keys[1]
+        puts "Config: Lightious Turnstile site and secret keys must either both be set or both be empty."
+        exit(1)
+      end
+
+      if security.turnstile_enabled?
+        if turnstile_values.any? { |value| {"CHANGE_ME", "CHANGE_ME!!"}.includes?(value.upcase) }
+          puts "Config: Lightious Turnstile keys must be replaced before startup."
+          exit(1)
+        end
+
+        hostname = (security.turnstile_hostname || public_url.host).to_s
+        normalized_hostname = Invidious::Lightious::SecurityInputs.normalize_hostname(hostname)
+        unless normalized_hostname
+          puts "Config: Set 'lightious.security.turnstile_hostname' to a bare DNS hostname, or configure a valid host in 'lightious.public_url'."
+          exit(1)
+        end
+        security.turnstile_hostname = normalized_hostname
       end
     end
 

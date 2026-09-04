@@ -9,6 +9,9 @@ enum VideoBadges
   VR180
   VR360
   ClosedCaptions
+  # Internal marker used by Lightious to enforce its no-short-form-content
+  # boundary. It is deliberately not serialized by the regular Invidious API.
+  Shorts
 end
 
 struct SearchVideo

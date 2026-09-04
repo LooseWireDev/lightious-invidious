@@ -34,6 +34,12 @@ module Invidious::Routes::BeforeAll
 
     env.set "header_x-forwarded-host", env.request.headers["X-Forwarded-Host"]?
 
+    turnstile_source = if CONFIG.lightious.enabled && CONFIG.lightious.security.turnstile_enabled?
+                         " https://challenges.cloudflare.com"
+                       else
+                         ""
+                       end
+
     # Only allow the pages at /embed/* to be embedded
     if env.request.resource.starts_with?("/embed")
       frame_ancestors = "'self' file: http: https:"
@@ -45,7 +51,7 @@ module Invidious::Routes::BeforeAll
     # inline styles (<style> [..] </style>, style=" [..] ")
     env.response.headers["Content-Security-Policy"] = {
       "default-src 'none'",
-      "script-src 'self'",
+      "script-src 'self'#{turnstile_source}",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",
@@ -53,7 +59,7 @@ module Invidious::Routes::BeforeAll
       "manifest-src 'self'",
       "media-src 'self' blob: " + COMPANION_CSP.companion_urls,
       "child-src 'self' blob:",
-      "frame-src 'self'",
+      "frame-src 'self'#{turnstile_source}",
       "frame-ancestors " + frame_ancestors,
     }.join("; ")
 

@@ -1,50 +1,93 @@
+<%
+  lightious_login = Invidious::Lightious::AbuseProtection.lightious_login_page?(referer)
+  protected_login = Invidious::Lightious::AbuseProtection.protected_login?
+  lightious_turnstile = protected_login && Invidious::Lightious::AbuseProtection.turnstile_enabled?
+%>
 <% content_for "header" do %>
-<title><%= I18n.translate(locale, "Log in") %> - Invidious</title>
+<title><%= I18n.translate(locale, "Log in") %> - <%= lightious_login ? "Lightious" : "Invidious" %></title>
+<% if lightious_turnstile %>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<% end %>
 <% end %>
 
-<div class="pure-g">
-    <div class="pure-u-1 pure-u-lg-1-5"></div>
-    <div class="pure-u-1 pure-u-lg-3-5">
-        <div class="h-box">
-            <% case account_type when %>
-            <% else # "invidious" %>
-                <form class="pure-form pure-form-stacked" action="/login?referer=<%= URI.encode_www_form(referer) %>&type=invidious" method="post">
-                    <fieldset>
-                        <% if email %>
-                            <input name="email" type="hidden" value="<%= HTML.escape(email) %>">
-                        <% else %>
-                            <label for="email"><%= I18n.translate(locale, "User ID") %> :</label>
-                            <input required class="pure-input-1" name="email" type="text" placeholder="<%= I18n.translate(locale, "User ID") %>">
-                        <% end %>
-
-                        <% if password %>
-                            <input name="password" type="hidden" value="<%= HTML.escape(password) %>">
-                        <% else %>
-                            <label for="password"><%= I18n.translate(locale, "Password") %> :</label>
-                            <input required class="pure-input-1" name="password" type="password" placeholder="<%= I18n.translate(locale, "Password") %>">
-                        <% end %>
-
-                        <% if captcha %>
-                            <% captcha = captcha.not_nil! %>
-                            <img style="width:50%" src='<%= captcha[:question] %>'/>
-                            <% captcha[:tokens].each_with_index do |token, i| %>
-                                <input type="hidden" name="token[<%= i %>]" value="<%= HTML.escape(token) %>">
-                            <% end %>
-                            <label for="answer"><%= I18n.translate(locale, "Time (h:mm:ss):") %></label>
-                            <input type="text" name="answer" type="text" placeholder="h:mm:ss">
-
-                            <button type="submit" name="action" value="signin" class="pure-button pure-button-primary">
-                                <%= I18n.translate(locale, "Register") %>
-                            </button>
-                        <% else %>
-                            <button type="submit" name="action" value="signin" class="pure-button pure-button-primary">
-                                <%= I18n.translate(locale, "Sign In") %>/<%= I18n.translate(locale, "Register") %>
-                            </button>
-                        <% end %>
-                    </fieldset>
-                </form>
+<% if lightious_login %>
+    <div class="lightious-auth" data-lightious-page="login">
+        <header class="lightious-auth-intro">
+            <p class="lightious-kicker">Companion access</p>
+            <h1>Sign in to choose what reaches your phone.</h1>
+            <p>Use an existing Invidious account, or choose a new user ID and password to create one.</p>
+        </header>
+        <div class="lightious-auth-panel">
+            <% if login_error %>
+                <div class="lightious-error" role="alert"><%= HTML.escape(login_error) %></div>
             <% end %>
+<% else %>
+    <div class="pure-g">
+        <div class="pure-u-1 pure-u-lg-1-5"></div>
+        <div class="pure-u-1 pure-u-lg-3-5">
+            <div class="h-box">
+                <% if login_error %>
+                    <div class="error-card" role="alert"><%= HTML.escape(login_error) %></div>
+                <% end %>
+<% end %>
+                <% case account_type when %>
+                <% else # "invidious" %>
+                    <form class="<%= lightious_login ? "lightious-login-form" : "pure-form pure-form-stacked" %>" action="/login?referer=<%= URI.encode_www_form(referer) %>&type=invidious" method="post">
+                        <fieldset>
+                            <% if email %>
+                                <input name="email" type="hidden" value="<%= HTML.escape(email) %>">
+                            <% else %>
+                                <label for="email"><%= I18n.translate(locale, "User ID") %></label>
+                                <input id="email" required class="pure-input-1" name="email" type="text" autocomplete="username" placeholder="<%= I18n.translate(locale, "User ID") %>">
+                            <% end %>
+
+                            <% if password %>
+                                <input name="password" type="hidden" value="<%= HTML.escape(password) %>">
+                            <% else %>
+                                <label for="password"><%= I18n.translate(locale, "Password") %></label>
+                                <input id="password" required class="pure-input-1" name="password" type="password" autocomplete="current-password" placeholder="<%= I18n.translate(locale, "Password") %>">
+                            <% end %>
+
+                            <% if captcha %>
+                                <% captcha = captcha.not_nil! %>
+                                <img <% if lightious_login %>class="lightious-captcha"<% else %>style="width:50%"<% end %> src='<%= captcha[:question] %>' alt="Registration CAPTCHA question">
+                                <% captcha[:tokens].each_with_index do |token, i| %>
+                                    <input type="hidden" name="token[<%= i %>]" value="<%= HTML.escape(token) %>">
+                                <% end %>
+                                <label for="answer"><%= I18n.translate(locale, "Time (h:mm:ss):") %></label>
+                                <input id="answer" name="answer" type="text" inputmode="numeric" placeholder="h:mm:ss">
+
+                                <button type="submit" name="action" value="signin" class="<%= lightious_login ? "lightious-action" : "pure-button pure-button-primary" %>">
+                                    <% if lightious_login %>
+                                        <%= I18n.translate(locale, "Sign In") %>/<%= I18n.translate(locale, "Register") %>
+                                    <% else %>
+                                        <%= I18n.translate(locale, "Register") %>
+                                    <% end %>
+                                </button>
+                            <% else %>
+                                <% if lightious_turnstile %>
+                                    <div
+                                        class="cf-turnstile lightious-turnstile"
+                                        data-sitekey="<%= HTML.escape(CONFIG.lightious.security.turnstile_site_key) %>"
+                                        data-action="<%= Invidious::Lightious::AbuseProtection::TURNSTILE_ACTION %>"
+                                        data-theme="auto"
+                                        data-size="flexible"
+                                    ></div>
+                                    <noscript><p class="lightious-field-hint">JavaScript is required for human verification.</p></noscript>
+                                <% end %>
+                                <button type="submit" name="action" value="signin" class="<%= lightious_login ? "lightious-action" : "pure-button pure-button-primary" %>">
+                                    <%= I18n.translate(locale, "Sign In") %>/<%= I18n.translate(locale, "Register") %>
+                                </button>
+                            <% end %>
+                        </fieldset>
+                    </form>
+                <% end %>
+<% if lightious_login %>
         </div>
     </div>
-    <div class="pure-u-1 pure-u-lg-1-5"></div>
-</div>
+<% else %>
+            </div>
+        </div>
+        <div class="pure-u-1 pure-u-lg-1-5"></div>
+    </div>
+<% end %>

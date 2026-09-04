@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.lightious_profiles
 (
   id text NOT NULL,
   invidious_user_email text NOT NULL,
-  mode text NOT NULL DEFAULT 'explore',
+  mode text NOT NULL DEFAULT 'focused',
   revision bigint NOT NULL DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),

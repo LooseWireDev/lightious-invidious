@@ -3,8 +3,20 @@ module Invidious::Routes::VideoPlayback
 
   # /videoplayback
   def self.get_video_playback(env)
+    get_video_playback(env, env.params.query)
+  end
+
+  # Lightious unwraps a signed, short-lived capability into the original
+  # Invidious proxy parameters without copying them into the public request.
+  def self.get_video_playback(
+    env,
+    query_params : HTTP::Params,
+    response_cache_control : String? = nil,
+    allow_cors : Bool = true,
+    close_redirects : Bool = true,
+  )
     locale = env.get("preferences").as(Preferences).locale
-    query_params = env.params.query
+    env.response.headers["Cache-Control"] = response_cache_control if response_cache_control
 
     fvip = query_params["fvip"]? || "3"
     mns = query_params["mn"]?.try &.split(",")
@@ -54,7 +66,7 @@ module Invidious::Routes::VideoPlayback
 
         if response.headers["Location"]?
           location = URI.parse(response.headers["Location"])
-          env.response.headers["Access-Control-Allow-Origin"] = "*"
+          env.response.headers["Access-Control-Allow-Origin"] = "*" if allow_cors
 
           new_host = "#{location.scheme}://#{location.host}"
           if new_host != host
@@ -101,16 +113,18 @@ module Invidious::Routes::VideoPlayback
       begin
         client.get(url, headers) do |resp|
           resp.headers.each do |key, value|
-            if !RESPONSE_HEADERS_BLACKLIST.includes?(key.downcase)
+            if !RESPONSE_HEADERS_BLACKLIST.includes?(key.downcase) &&
+               !(response_cache_control && key.downcase == "cache-control") &&
+               (allow_cors || !key.downcase.starts_with?("access-control-"))
               env.response.headers[key] = value
             end
           end
 
-          env.response.headers["Access-Control-Allow-Origin"] = "*"
+          env.response.headers["Access-Control-Allow-Origin"] = "*" if allow_cors
 
           if location = resp.headers["Location"]?
             url = Invidious::HttpServer::Utils.proxy_video_url(location, region: region)
-            return env.redirect url
+            return env.redirect url, close: close_redirects
           end
 
           IO.copy(resp.body_io, env.response)
@@ -128,6 +142,7 @@ module Invidious::Routes::VideoPlayback
       range_start, range_end = parse_range(env.request.headers["Range"]?)
       chunk_start = range_start
       chunk_end = range_end
+      redirect_url : String? = nil
 
       if !chunk_end || chunk_end - chunk_start > HTTP_CHUNK_SIZE
         chunk_end = chunk_start + HTTP_CHUNK_SIZE - 1
@@ -159,12 +174,15 @@ module Invidious::Routes::VideoPlayback
               end
 
               resp.headers.each do |key, value|
-                if !RESPONSE_HEADERS_BLACKLIST.includes?(key.downcase) && key.downcase != "content-range"
+                if !RESPONSE_HEADERS_BLACKLIST.includes?(key.downcase) &&
+                   key.downcase != "content-range" &&
+                   !(response_cache_control && key.downcase == "cache-control") &&
+                   (allow_cors || !key.downcase.starts_with?("access-control-"))
                   env.response.headers[key] = value
                 end
               end
 
-              env.response.headers["Access-Control-Allow-Origin"] = "*"
+              env.response.headers["Access-Control-Allow-Origin"] = "*" if allow_cors
 
               if location = resp.headers["Location"]?
                 url = Invidious::HttpServer::Utils.proxy_video_url(location, region: region)
@@ -173,7 +191,7 @@ module Invidious::Routes::VideoPlayback
                   url = "#{url}&title=#{URI.encode_www_form(title)}"
                 end
 
-                env.redirect url
+                redirect_url = url
                 break
               end
 
@@ -204,6 +222,11 @@ module Invidious::Routes::VideoPlayback
             client.close
             client = make_client(URI.parse(host), region, force_resolve: true)
           end
+        end
+
+        if location = redirect_url
+          client.close
+          return env.redirect location, close: close_redirects
         end
 
         chunk_start = chunk_end + 1
