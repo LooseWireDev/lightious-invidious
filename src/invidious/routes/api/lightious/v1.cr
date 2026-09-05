@@ -480,13 +480,17 @@ module Invidious::Routes::API::Lightious::V1
     end
 
     source_params = URI.parse(grant.source).query_params
-    response = Invidious::Routes::VideoPlayback.get_video_playback(
-      env,
-      source_params,
-      response_cache_control: "private, no-store",
-      allow_cors: false,
-      close_redirects: false,
-    )
+    response = if CONFIG.invidious_companion.present?
+                 Invidious::Routes::Companion.get_lightious_video_playback(env, source_params)
+               else
+                 Invidious::Routes::VideoPlayback.get_video_playback(
+                   env,
+                   source_params,
+                   response_cache_control: "private, no-store",
+                   allow_cors: false,
+                   close_redirects: false,
+                 )
+               end
 
     if location = env.response.headers["Location"]?
       protected_location = Invidious::Lightious::MediaCapability.mint(

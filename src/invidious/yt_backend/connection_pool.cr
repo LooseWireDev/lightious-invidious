@@ -102,6 +102,28 @@ struct CompanionConnectionPool
 
     response
   end
+
+  # Media responses can be large and may already be partially written when a
+  # socket or downstream client disconnects. Reconnect the pooled client for
+  # the next request, but never replay the current streaming callback.
+  def stream(&)
+    wrapper = pool.checkout
+
+    begin
+      response = yield wrapper
+    rescue ex
+      wrapper.close
+
+      companion = CONFIG.invidious_companion.sample
+      wrapper = CompanionWrapper.new(companion: companion)
+
+      raise ex
+    ensure
+      pool.release(wrapper)
+    end
+
+    response
+  end
 end
 
 def add_yt_headers(request)
